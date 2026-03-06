@@ -2,27 +2,40 @@ import streamlit as st
 import control as ct
 import matplotlib.pyplot as plt
 import numpy as np
-import math
 
-# 1. ΒΑΛΕ ΤΙΣ ΡΥΘΜΙΣΕΙΣ ΨΗΛΑ
-st.set_page_config(page_title="Routh-Hurwitz Analysis", layout="wide")
+st.set_page_config(page_title="Routh & Root Locus Tool", layout="wide")
 
-st.title("🎛️ Ανάλυση Ευστάθειας & Γεωμετρικός Τόπος Ριζών")
-st.subheader("ΔΗΜΗΤΡΙΟΣ ΚΑΒΑΛΙΕΡΟΣ MSc.")
+st.title("🎛️ Ανάλυση Ευστάθειας Routh & Root Locus")
+st.subheader("ΔΗΜΗΤΡΙΟΣ ΚΑΒΑΛΙΕΡΟΣ MSc. ΗΛΕΚΤΡΟΛΟΓΟΣ ΜΗΧΑΝΙΚΟΣ")
 
-# 2. Η ΕΠΙΛΟΓΗ ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ ΕΞΩ ΑΠΟ ΤΟ IF ΤΟΥ BUTTON
-xe_degree = st.sidebar.selectbox("Επιλέξτε Βαθμό ΧΕ:", [1, 2, 3, 4, 5, 6], index=2)
+# Sidebar για είσοδο δεδομένων
+st.sidebar.header("Παράμετροι Συστήματος")
+n = st.sidebar.number_input("Βαθμός ΧΕ (1-6)", min_value=1, max_value=6, value=3)
 
-inputs = {}
-for i in range(xe_degree, 0, -1):
-    inputs[f'a{i}'] = st.sidebar.number_input(f"Συντελεστής a{i}", value=1.0, step=0.1)
+coeffs = []
+for i in range(n, 0, -1):
+    val = st.sidebar.number_input(f"Συντελεστής a{i} (S^{i})", value=1.0)
+    coeffs.append(val)
 
-# 3. ΤΩΡΑ ΤΟ ΚΟΥΜΠΙ ΓΙΑ ΤΟΥΣ ΥΠΟΛΟΓΙΣΜΟΥΣ
-if st.sidebar.button("ΕΚΤΕΛΕΣΗ ΑΝΑΛΥΣΗΣ"):
-    col1, col2 = st.columns([1, 1.2])
-    
+# Υπολογισμοί
+if st.sidebar.button("ΕΚΤΕΛΕΣΗ"):
+    col1, col2 = st.columns(2)
+
     with col1:
-        # Εδώ βάλε τον κώδικα για τον πίνακα Routh
-        if xe_degree == 3:
-            # ... οι υπολογισμοί σου ...
-            st.success("Ολοκληρώθηκε!")
+        st.write("### Πίνακας Routh & Ανάλυση")
+        # Εδώ μπαίνει η λογική σου για τον πίνακα (print -> st.write)
+        # Παράδειγμα για n=3
+        if n == 3:
+            a3, a2, a1 = coeffs[0], coeffs[1], coeffs[2]
+            kkr = (a1 * a2) / a3
+            st.code(f"S^3 | {a3:.2f}  {a1:.2f}\nS^2 | {a2:.2f}  K\nS^1 | {a1 - (a3 / a2):.2f}K")
+            if kkr > 0:
+                st.success(f"Ευσταθές για K < {kkr:.2f}")
+
+    with col2:
+        st.write("### Γεωμετρικός Τόπος Ριζών")
+        den = coeffs + [0.0]  # Προσθήκη K
+        sys = ct.TransferFunction([1], den)
+        fig, ax = plt.subplots()
+        ct.root_locus(sys, grid=True, ax=ax)
+        st.pyplot(fig)
