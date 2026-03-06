@@ -3,78 +3,111 @@ import control as ct
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import math
 
-st.set_page_config(page_title="Routh-Hurwitz Stability Analysis", layout="wide")
+# Ρυθμίσεις Σελίδας
+st.set_page_config(page_title="Routh & Root Locus Tool", layout="wide")
 
-st.title("🎛️ Ανάλυση Ευστάθειας: $K_{kp}$ & $\omega_{kp}$")
+st.markdown("""
+    <style>
+    .main { background-color: #f8f9fa; }
+    .stButton>button { width: 100%; background-color: #27ae60; color: white; font-weight: bold; }
+    </style>
+    """, unsafe_allow_html=True)
+
+st.title("🎛️ Ανάλυση Ευστάθειας & Γεωμετρικός Τόπος Ριζών")
 st.subheader("ΔΗΜΗΤΡΙΟΣ ΚΑΒΑΛΙΕΡΟΣ MSc. ΗΛΕΚΤΡΟΛΟΓΟΣ ΜΗΧΑΝΙΚΟΣ")
 
-# --- Sidebar ---
-st.sidebar.header("Συντελεστές ΧΕ")
-n = st.sidebar.number_input("Βαθμός n", min_value=1, max_value=6, value=3)
+# --- SIDEBAR: ΕΙΣΑΓΩΓΗ ΔΕΔΟΜΕΝΩΝ ---
+st.sidebar.header("⚙️ Παράμετροι Συστήματος")
+n = st.sidebar.selectbox("Επιλέξτε Βαθμό ΧΕ (n):", [1, 2, 3, 4, 5, 6], index=2)
 
-coeffs_input = []
+coeffs = []
+st.sidebar.write("Εισάγετε τους συντελεστές $a_n, a_{n-1}, \dots, a_1$:")
 for i in range(n, 0, -1):
-    val = st.sidebar.number_input(f"a{i} (s^{i})", value=1.0)
-    coeffs_input.append(val)
+    val = st.sidebar.number_input(f"Συντελεστής a{i} (s^{i})", value=1.0, key=f"a{i}")
+    coeffs.append(val)
 
-if st.sidebar.button("ΥΠΟΛΟΓΙΣΜΟΣ"):
-    col1, col2 = st.columns([1, 1])
+# --- ΚΥΡΙΟΣ ΥΠΟΛΟΓΙΣΜΟΣ ---
+if st.sidebar.button("ΕΚΤΕΛΕΣΗ ΑΝΑΛΥΣΗΣ"):
+    col1, col2 = st.columns([1, 1.2])
 
     with col1:
-        st.write("### 📋 Πίνακας Routh (για οριακή ευστάθεια)")
+        st.header("📋 Πίνακας Routh")
         
-        # Συνάρτηση που χτίζει τον πίνακα Routh για ένα συγκεκριμένο K
-        def get_routh_matrix(n, coeffs, K):
-            all_c = coeffs + [K]
-            num_rows = n + 1
-            num_cols = (n // 2) + 1
-            res = np.zeros((num_rows, num_cols))
-            for i, val in enumerate(all_c):
-                res[i % 2, i // 2] = val
-            for i in range(2, num_rows):
-                for j in range(num_cols - 1):
-                    if res[i-1, 0] == 0: res[i-1, 0] = 1e-9
-                    res[i, j] = (res[i-1, 0] * res[i-2, j+1] - res[i-2, 0] * res[i-1, j+1]) / res[i-1, 0]
-            return res
-
-        # Εύρεση K_kp με σάρωση (Root Finding)
-        # Ψάχνουμε την τιμή του K που μηδενίζει το στοιχείο s^1, στήλη 1
-        def find_kkr(n, coeffs):
+        # 1. Εύρεση Κρίσιμου Κ (Kkp) με σάρωση
+        # Ψάχνουμε την τιμή του K που κάνει το πρώτο στοιχείο της s^1 σειράς μηδέν
+        def find_critical_k(n, coeffs_list):
             if n < 2: return None
-            ks = np.linspace(0, 1000, 10000) # Σάρωση από 0 έως 1000
-            for k in ks:
-                m = get_routh_matrix(n, coeffs, k)
-                if m[n-1, 0] <= 0: return k
-            return None
+            test_ks = np.linspace(0.01, 2000, 5000) # Ψάχνει K από 0 έως 2000
+            for k in test_ks:
+                # Κατασκευή πίνακα Routh για το συγκεκριμένο k
+                full_c = coeffs_list + [k]
+                rows, cols = n + 1, (n // 2) + 1
+                r_mat = np.zeros((rows, cols))
+                for idx, c_val in enumerate(full_c):
+                    r_mat[idx % 2, idx // 2] = c_val
+                
+                for r in range(2, rows):
+                    for c in range(cols - 1):
+                        if r_mat[r-1, 0] == 0: r_mat[r-1, 0] = 1e-5
+                        r_mat[r, c] = (r_mat[r-1, 0] * r_mat[r-2, c+1] - r_mat[r-2, 0] * r_mat[r-1, c+1]) / r_mat[r-1, 0]
+                
+                # Αν το s^1 (προτελευταία σειρά) μηδενιστεί, βρήκαμε το K_kp
+                if r_mat[n-1, 0] <= 0.05:
+                    return k, r_mat
+            return None, None
 
-        kkr = find_kkr(n, coeffs_input)
-        
-        # Εμφάνιση πίνακα για το K_kp (ή για K=1 αν δεν βρέθηκε)
-        disp_k = kkr if kkr else 1.0
-        final_m = get_routh_matrix(n, coeffs_input, disp_k)
-        df = pd.DataFrame(final_m, index=[f"s^{n-i}" for i in range(n+1)])
-        st.table(df.style.format("{:.2f}"))
+        kkp, final_matrix = find_critical_k(n, coeffs)
 
-        if kkr:
-            st.success(f"✅ **Κρίσιμο Κ (Kκρ): {kkr:.2f}**")
-            # Υπολογισμός ω_kp από τη βοηθητική εξίσωση (γραμμή s^2)
-            # A(s) = m[n-2, 0]*s^2 + m[n-2, 1] = 0 => w = sqrt(m2/m1)
-            row_aux = n - 2
-            if final_m[row_aux, 0] != 0:
-                wkr = math.sqrt(abs(final_m[row_aux, 1] / final_m[row_aux, 0]))
-                st.info(f"🔊 **Συχνότητα Ταλάντωσης (ωκρ): {wkr:.2f} rad/s**")
-                st.latex(f"\\omega_{{kp}} = \\sqrt{{\\frac{{{final_m[row_aux, 1]:.2f}}}{{{final_m[row_aux, 0]:.2f}}}}} = {wkr:.2f}")
+        if kkp:
+            st.success(f"✅ **Κρίσιμο Κ (Kκρ): {kkp:.2f}**")
+            
+            # Εμφάνιση Πίνακα Routh (ως DataFrame)
+            row_names = [f"s^{n-i}" for i in range(n+1)]
+            df = pd.DataFrame(final_matrix, index=row_names)
+            st.table(df.style.format("{:.2f}"))
+            
+            # Υπολογισμός ωκρ από τη βοηθητική εξίσωση (σειρά s^2)
+            # A(s) = a*s^2 + b = 0 -> w = sqrt(b/a)
+            try:
+                a_aux = final_matrix[n-2, 0]
+                b_aux = final_matrix[n-2, 1]
+                wkp = np.sqrt(abs(b_aux / a_aux))
+                st.info(f"🔊 **Συχνότητα Ταλάντωσης (ωκρ): {wkp:.2f} rad/s**")
+            except:
+                st.write("Δεν ήταν δυνατός ο υπολογισμός του ωκρ.")
         else:
-            st.warning("Το σύστημα δεν παρουσιάζει οριακή ευστάθεια για K > 0 ή το Kκρ είναι πολύ μεγάλο.")
+            st.warning("⚠️ Δεν βρέθηκε σημείο οριακής ευστάθειας για K < 2000.")
+            # Δείξε τον πίνακα για K=1
+            full_c = coeffs + [1.0]
+            rows, cols = n + 1, (n // 2) + 1
+            r_mat = np.zeros((rows, cols))
+            for idx, c_val in enumerate(full_c): r_mat[idx % 2, idx // 2] = c_val
+            for r in range(2, rows):
+                for c in range(cols - 1):
+                    if r_mat[r-1, 0] == 0: r_mat[r-1, 0] = 1e-5
+                    r_mat[r, c] = (r_mat[r-1, 0] * r_mat[r-2, c+1] - r_mat[r-2, 0] * r_mat[r-1, c+1]) / r_mat[r-1, 0]
+            st.table(pd.DataFrame(r_mat, index=[f"s^{n-i}" for i in range(n+1)]))
 
     with col2:
-        st.write("### 📈 Γεωμετρικός Τόπος Ριζών")
-        sys = ct.TransferFunction([1], coeffs_input + [0])
-        fig, ax = plt.subplots()
+        st.header("📈 Γεωμετρικός Τόπος Ριζών")
+        
+        # G(s) = 1 / (an*s^n + ... + a1*s)
+        num = [1.0]
+        den = coeffs + [0.0]
+        sys = ct.TransferFunction(num, den)
+        
+        fig, ax = plt.subplots(figsize=(7, 6))
         ct.root_locus(sys, grid=True, ax=ax)
-        if kkr:
-            ax.plot(0, wkr, 'ro', label='Οριακή Ευστάθεια')
-            ax.plot(0, -wkr, 'ro')
+        ax.set_title("Root Locus Plot", fontsize=12)
+        
+        # Αν έχουμε Kkp, σημείωσε το πάνω στον άξονα
+        if kkp:
+            ax.plot(0, wkp, 'ro', markersize=8, label="Οριακή Ευστάθεια")
+            ax.plot(0, -wkp, 'ro', markersize=8)
+            ax.legend()
+
         st.pyplot(fig)
+
+st.divider()
+st.caption("© 2026 Δημήτριος Καβαλιέρος - Συστήματα Αυτομάτου Ελέγχου")
