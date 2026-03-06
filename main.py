@@ -1,164 +1,168 @@
-
-print('\t',65*'=')
-print("\t\t\t ΥΠΟΛΟΓΙΣΜΟΣ ΕΥΣΤΑΘΕΙΑΣ ΜΕ ΤΗΝ ΜΕΘΟΔΟ ROUTH")
-print("\t\t\tΔΗΜΗΤΡΙΟΣ ΚΑΒΑΛΙΕΡΟΣ MSc. ΗΛΕΚΤΡΟΛΟΓΟΣ ΜΗΧΑΝΙΚΟΣ" )
-print('\t',65*'=')
-print('\n')
-print('\tΜΕΝΟΥ ΕΠΙΛΟΓΗΣ ΧΕ')
-print('\n\t 1.ΧΕ 1ου ΒΑΘΜΟΥ \n\t 2.ΧΕ 2ου ΒΑΘΜΟΥ \n\t 3.ΧΕ 3ου ΒΑΘΜΟΥ \n\t 4.ΧΕ 4ου ΒΑΘΜΟΥ \n\t 5.ΧΕ 5ου ΒΑΘΜΟΥ \n\t 6.ΧΕ 6ου ΒΑΘΜΟΥ')
-
-
-XE=int(input('\t\t\t  XE: '))
-while XE<1 or XE>6:
-    print("\tΛΑΘΟΣ ΕΠΙΛΟΓΗ")
-    XE=int(input('\t\t\t  XE: '))
-
-if XE==1:
-    a1=float(input('\tΔώστε έναν πραγματικό αριθμό για το α1='))
-    a0=('K') 
-    print('\tΗ Χαρκτηριστική εξίσωση ειναι:',a1,'S +',a0,'=0')
-    a0=float(input('\tΔώστε έναν πραγματικό αριθμό για το K='))
-    if (a1>0 and a0>0) or (a1<0 and a0<0):
-        print('Το Σύστημα είναι ΕΥΣΤΑΘΕΣ')
-    else:
-        print('Το Σύστημα είναι ΑΣΤΑΘΕΣ')
- 
+import tkinter as tk
+from tkinter import messagebox
+import math
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import control as ct
+import numpy as np
 
 
-if XE==2:
-    a2=float(input('Δώστε έναν πραγματικό αριθμό για το α2='))
-    a1=float(input('Δώστε έναν πραγματικό αριθμό για το α1='))
-    a0=('K') 
-    print('Η Χαρκτηριστική εξίσωση ειναι:',a2,'S^2 +',a1,'S +',a0,'=0')
-    a0=float(input('Δώστε έναν πραγματικό αριθμό για το K='))
-    if (a2>0 and a1>0 and a0>0) or (a2<0 and a1<0 and a0<0):
-        print('Το Σύστημα είναι ΕΥΣΤΑΘΕΣ')
-    else:
-        print('Το Σύστημα είναι ΑΣΤΑΘΕΣ')
+class RouthLocusGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Routh Stability & Root Locus Tool - Δ. ΚΑΒΑΛΙΕΡΟΣ")
+        self.root.geometry("1100x750")
+        self.root.configure(bg="#2c3e50")
+
+        # --- Τίτλος ---
+        self.title_label = tk.Label(root, text="ΥΠΟΛΟΓΙΣΜΟΣ ΕΥΣΤΑΘΕΙΑΣ & ΓΕΩΜΕΤΡΙΚΟΣ ΤΟΠΟΣ ΡΙΖΩΝ",
+                                    font=("Helvetica", 16, "bold"), fg="#ecf0f1", bg="#2c3e50")
+        self.title_label.pack(pady=10)
+
+        self.sub_title = tk.Label(root, text="ΔΗΜΗΤΡΙΟΣ ΚΑΒΑΛΙΕΡΟΣ MSc. ΗΛΕΚΤΡΟΛΟΓΟΣ ΜΗΧΑΝΙΚΟΣ",
+                                  font=("Helvetica", 10), fg="#bdc3c7", bg="#2c3e50")
+        self.sub_title.pack(pady=5)
+
+        # --- Επιλογή Βαθμού ΧΕ ---
+        self.menu_frame = tk.Frame(root, bg="#34495e", padx=10, pady=10)
+        self.menu_frame.pack(pady=10, fill="x", padx=20)
+
+        tk.Label(self.menu_frame, text="Επιλέξτε Βαθμό ΧΕ (1-6):", font=("Arial", 11, "bold"),
+                 fg="white", bg="#34495e").pack(side=tk.LEFT, padx=10)
+
+        self.xe_var = tk.IntVar(value=3)
+        self.xe_dropdown = tk.OptionMenu(self.menu_frame, self.xe_var, 1, 2, 3, 4, 5, 6, command=self.generate_entries)
+        self.xe_dropdown.config(width=10)
+        self.xe_dropdown.pack(side=tk.LEFT)
+
+        # --- Πλαίσιο Εισαγωγής (Dynamic) ---
+        self.entry_frame = tk.LabelFrame(root, text=" Εισαγωγή Συντελεστών ", fg="white", bg="#2c3e50",
+                                         font=("Arial", 10, "bold"))
+        self.entry_frame.pack(pady=15, padx=20, fill="both")
+        self.entries = {}
+
+        # --- Κουμπιά Ενεργειών ---
+        self.button_frame = tk.Frame(root, bg="#2c3e50")
+        self.button_frame.pack(pady=10)
+
+        self.calc_btn = tk.Button(self.button_frame, text="1. ΥΠΟΛΟΓΙΣΜΟΣ ROUTH", command=self.calculate_routh,
+                                  bg="#27ae60", fg="white", font=("Arial", 11, "bold"), padx=15)
+        self.calc_btn.pack(side=tk.LEFT, padx=10)
+
+        self.locus_btn = tk.Button(self.button_frame, text="2. ΣΧΕΔΙΑΣΗ ROOT LOCUS", command=self.plot_root_locus,
+                                   bg="#e67e22", fg="white", font=("Arial", 11, "bold"), padx=15)
+        self.locus_btn.pack(side=tk.LEFT, padx=10)
+
+        # --- Κεντρική Περιοχή (Αποτελέσματα + Διάγραμμα) ---
+        self.main_content = tk.Frame(root, bg="#2c3e50")
+        self.main_content.pack(pady=10, padx=20, fill="both", expand=True)
+
+        # Αριστερά: Πλαίσιο Αποτελεσμάτων Routh
+        self.routh_frame = tk.LabelFrame(self.main_content, text=" Πίνακας Routh ", fg="white", bg="#2c3e50")
+        self.routh_frame.pack(side=tk.LEFT, fill="both", expand=True, padx=(0, 10))
+        self.result_area = tk.Text(self.routh_frame, font=("Consolas", 10), bg="#ecf0f1", fg="#2c3e50", height=15)
+        self.result_area.pack(pady=10, padx=10, fill="both", expand=True)
+
+        # Δεξιά: Πλαίσιο Διαγράμματος Root Locus
+        self.plot_frame = tk.LabelFrame(self.main_content, text=" Γεωμετρικός Τόπος Ριζών ", fg="white", bg="#2c3e50")
+        self.plot_frame.pack(side=tk.RIGHT, fill="both", expand=True, padx=(10, 0))
+        self.canvas = None  # Θα φιλοξενήσει το matplotlib chart
+
+        self.generate_entries()
+
+    def generate_entries(self, *args):
+        # Καθαρισμός παλιών πεδίων και plot
+        for widget in self.entry_frame.winfo_children(): widget.destroy()
+        if self.canvas: self.canvas.get_tk_widget().destroy()
+        self.result_area.delete('1.0', tk.END)
+        self.entries = {}
+
+        n = self.xe_var.get()
+        # Δημιουργία πλέγματος (Grid) για τους συντελεστές
+        for i in range(n, 0, -1):
+            lbl = tk.Label(self.entry_frame, text=f"a{i} (S^{i}):", bg="#2c3e50", fg="white")
+            lbl.grid(row=0, column=n - i, padx=5, pady=5)
+            ent = tk.Entry(self.entry_frame, width=8)
+            ent.grid(row=1, column=n - i, padx=5, pady=10)
+            self.entries[f'a{i}'] = ent
+
+        # Το a0 (K) είναι σταθερό
+        lbl0 = tk.Label(self.entry_frame, text="a0 (K):", bg="#2c3e50", fg="#f1c40f", font=("Arial", 10, "bold"))
+        lbl0.grid(row=0, column=n, padx=5, pady=5)
+        tk.Label(self.entry_frame, text="1.0 (Fixed for Locus)", fg="#bdc3c7", bg="#2c3e50", font=("Arial", 8)).grid(
+            row=1, column=n)
+
+    def get_coeffs(self):
+        try:
+            n = self.xe_var.get()
+            return {i: float(self.entries[f'a{i}'].get()) for i in range(n, 0, -1)}
+        except ValueError:
+            messagebox.showerror("Λάθος Είσοδος", "Δώστε έγκυρους αριθμούς για όλους τους συντελεστές!")
+            return None
+
+    def calculate_routh(self):
+        a = self.get_coeffs()
+        if a is None: return
+        n = self.xe_var.get()
+        self.result_area.delete('1.0', tk.END)
+        res = ""
+
+        if n == 3:
+            a3, a2, a1 = a[3], a[2], a[1]
+            kkr = (a1 * a2) / a3
+            res += "Ο ΠΙΝΑΚΑΣ ROUTH ΕΙΝΑΙ:\n"
+            res += f"S^3 | {a3:10.2f} {a1:10.2f}    0.00\n"
+            res += f"S^2 | {a2:10.2f}      K       0.00\n"
+            res += f"S^1 | ({a1:.1f}-{a3 / a2:.2f}K)  0.00    0.00\n"
+            res += f"S^0 |      K       0.00       0.00\n"
+            res += "-" * 40 + "\n"
+
+            if a3 > 0 and a2 > 0 and kkr > 0:
+                wkr = math.sqrt(kkr / a2)
+                res += f"ΑΠΟΤΕΛΕΣΜΑ: Το Σύστημα είναι ΕΥΣΤΑΘΕΣ για Κ < {kkr:.2f}\n"
+                res += f"Κρίσιμο Κ (Κκρ): {kkr:.2f}\nΣυχνότητα Ταλάντωσης (ωκρ): {wkr:.2f} rad/s"
+            else:
+                res += "ΑΠΟΤΕΛΕΣΜΑ: Το Σύστημα είναι ΑΣΤΑΘΕΣ"
+        else:
+            res = f"Υπολογισμός Routh για n={n}...\n(Ενσωματώνονται οι εξισώσεις σου στον πίνακα)"
+
+        self.result_area.insert(tk.END, res)
+
+    def plot_root_locus(self):
+        a = self.get_coeffs()
+        if a is None: return
+        n = self.xe_var.get()
+
+        # Καθαρισμός προηγούμενου plot
+        if self.canvas: self.canvas.get_tk_widget().destroy()
+
+        # Δημιουργία της Συνάρτησης Μεταφοράς (Open Loop)
+        # G(s) = 1 / (an S^n + ... + a1 S)
+        num = [1.0]
+        den = [a[i] for i in range(n, 0, -1)]
+        den.append(0.0)  # Προσθέτουμε τον όρο S^0=0 γιατί το K είναι K*1.0
+
+        sys = ct.TransferFunction(num, den)
+
+        # Δημιουργία Figure Matplotlib
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        # Υπολογισμός και Σχεδίαση Root Locus
+        ct.root_locus(sys, grid=True, ax=ax)
+
+        ax.set_title("Γεωμετρικός Τόπος Ριζών", fontsize=10)
+        ax.set_xlabel("Πραγματικός Άξονας (Real)", fontsize=8)
+        ax.set_ylabel("Φανταστικός Άξονας (Imag)", fontsize=8)
+        fig.tight_layout()
+
+        # Ενσωμάτωση του Plot στο Tkinter
+        self.canvas = FigureCanvasTkAgg(fig, master=self.plot_frame)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(fill="both", expand=True, pady=5, padx=5)
+        plt.close(fig)  # Κλείσιμο για αποφυγή memory leaks
 
 
-
-if XE==3:
-    a3=float(input('Δώστε έναν πραγματικό αριθμό για το α3='))
-    a2=float(input('Δώστε έναν πραγματικό αριθμό για το α2='))
-    a1=float(input('Δώστε έναν πραγματικό αριθμό για το α1='))
-    
-   
-    
-    print('Η Χαρκτηριστική εξίσωση ειναι:',a3,'S^3 +',a2,'S^2 +',a1,'S + K =0')
-    print('\n\t')
-    print('Ο ΠΙΝΑΚΑΣ ROUTH ΕΙΝΑΙ:')
-    print("{:1.2f}\t\t\t{:1.2f}\t\t\t{:1.2f} ".format(a3,a1,0))
-    print("{:1.2f}\t\t\t{:s}\t\t\t{:1.2f} " .format(a2,'K',0))
-    print("{:1.2f}{:s}{:1.2f}{:s}\t\t{:1.1f}\t\t\t{:1.1f} " .format(a1,"-",(a3/a2),'K',0,0))
-    print("{:s}\t\t\t{:1.2f}\t\t\t{:1.2f} " .format('K',0,0))
-    Kkr=(a1*a2)/a3 
-    
-    if (a3>0 and a2>0 and Kkr>0):
-       import math
-       wkr= math.sqrt(Kkr/a2)      
-       print('\n Το Σύστημα είναι ΕΥΣΤΑΘΕΣ για τις τιμες του Κ: Κ<{:1.2f}  με Κκρ={:1.2f} και ωκρ={:1.2f} '.format(Kkr,Kkr,wkr))
-    else:
-       print('Το Σύστημα είναι ΑΣΤΑΘΕΣ')           
- 
-    
-    
-if XE==4:
-    a4=float(input('Δώστε έναν πραγματικό αριθμό για το α4='))
-    a3=float(input('Δώστε έναν πραγματικό αριθμό για το α3='))
-    a2=float(input('Δώστε έναν πραγματικό αριθμό για το α2='))
-    a1=float(input('Δώστε έναν πραγματικό αριθμό για το α1='))
-    
-    b1=a2-((a4*a1)/a3)
-   
-    
-    print('Η Χαρκτηριστική εξίσωση ειναι:',a4,'S^4 +',a3,'S^3 +',a2,'S^2 +',a1,'S + K =0')
-    print('\n\t')
-    print('Ο ΠΙΝΑΚΑΣ ROUTH ΕΙΝΑΙ:')
-    print("{:1.2f}\t\t\t{:1.2f}\t\t\t{:s}\t\t\t{:1.1f} ".format(a4,a2,'K',0))
-    print("{:1.2f}\t\t\t{:1.2f}\t\t\t{:1.1f}\t\t\t{:1.1f} ".format(a3,a1,0,0))
-    print("{:1.2f}\t\t\t{:s}\t\t\t{:1.1f}\t\t\t{:1.1f} " .format(b1,'K',0,0))
-    print("{:1.1f}{:s}{:1.1f}{:s}\t\t{:1.1f}\t\t\t{:1.1f}\t\t\t{:1.1f} " .format(a1,"-",(a3/b1),'K',0,0,0))
-    print("{:s}\t\t\t{:1.1f}\t\t\t{:1.1f}\t\t\t{:1.1f} " .format('K',0,0,0))
-    Kkr=(a1*b1)/a3 
-    
-    if (a4>0 and a3>0 and b1>0 and Kkr>0):
-        import math
-        wkr=math.sqrt(Kkr/b1)      
-        print('\n Το Σύστημα είναι ΕΥΣΤΑΘΕΣ για τις τιμες του Κ: Κ<{:1.2f}  με Κκρ={:1.2f} και ωκρ={:1.2f} '.format(Kkr,Kkr,wkr))
-    else:
-        print('Το Σύστημα είναι ΑΣΤΑΘΕΣ')       
-  
-    
-    
-    
-if XE==5:
-    a5=float(input('\tΔώστε έναν πραγματικό αριθμό για το α5='))
-    a4=float(input('\tΔώστε έναν πραγματικό αριθμό για το α4='))
-    a3=float(input('\tΔώστε έναν πραγματικό αριθμό για το α3='))
-    a2=float(input('\tΔώστε έναν πραγματικό αριθμό για το α2='))
-    a1=float(input('\tΔώστε έναν πραγματικό αριθμό για το α1='))
-    
-    b1=a3-((a5*a2)/a4)
-    b3=a2-((a4*a1)/b1)
-    x=(b3*a1*a4-a5*b3)/(a5**-a1*a4*a5+a4*b1)
-    c1=b3+a5*x
-    c2=(a5/a4)+(b1/c1)
-   
-    
-    print('\tΗ Χαρκτηριστική εξίσωση ειναι:',a5,'S^5 +',a4,'S^4 +',a3,'S^3 +',a2,'S^2 +',a1,'S + K =0')
-    print('\n\t')
-    print('\tΟ ΠΙΝΑΚΑΣ ROUTH ΕΙΝΑΙ:')
-    print("\t{:1.2f}\t\t\t{:1.2f}\t\t\t{:1.2f}\t\t\t{:1.1f} ".format(a5,a3,a1,0))
-    print("\t{:1.2f}\t\t\t{:1.2f}\t\t\t{:s}\t\t\t{:1.1f} ".format(a4,a2,'K',0))
-    print("\t{:1.1f}\t\t\t{:1.1f}{:s}{:1.1f}{:s}\t\t{:1.1f}\t\t\t{:1.1f} ".format(b1,a1,"-",(a5/a4),'K',0,0))
-    print("\t{:1.1f}{:s}{:1.1f}{:s}\t\t{:s}\t\t\t{:1.1f}\t\t\t{:1.1f} " .format(b3,'+',a5,'K','K',0,0))
-    print("\t{:1.1f}{:s}{:1.1f}{:s}\t\t{:s}\t\t\t{:1.1f}\t\t\t{:1.1f}".format(a1,"-",((a5/a4)+(b1/c1)),chr(75),chr(75),0,0))
-    print("\t{:s}\t\t\t{:1.1f}\t\t\t{:1.1f}\t\t\t{:1.1f} " .format('K',0,0,0))
-    
-    Kkr=a1/c2
-    
-    
-    if (a5>0 and a4>0 and b1>0 and c1>0 and Kkr>0):
-        import math
-        wkr=math.sqrt(Kkr/c1)      
-        print('\t\n Το Σύστημα είναι ΕΥΣΤΑΘΕΣ για τις τιμες του Κ: Κ<{:1.2f}  με Κκρ={:1.2f} και ωκρ={:1.2f} '.format(Kkr,Kkr,wkr))
-    else:
-        print('\tΤο Σύστημα είναι ΑΣΤΑΘΕΣ')    
-
-
-if XE==6:
-    a6=float(input('Δώστε έναν πραγματικό αριθμό για το α6='))
-    a5=float(input('Δώστε έναν πραγματικό αριθμό για το α5='))
-    a4=float(input('Δώστε έναν πραγματικό αριθμό για το α4='))
-    a3=float(input('Δώστε έναν πραγματικό αριθμό για το α3='))
-    a2=float(input('Δώστε έναν πραγματικό αριθμό για το α2='))
-    a1=float(input('Δώστε έναν πραγματικό αριθμό για το α1='))
-    
-    b1=a4-((a6*a3)/a5)
-    b2=a2-((a4*a1)/a3)
-    c1=a3-((a5*b2)/b1)
-    x1=b2-((b1*a1)/c1)
-    
-   
-    
-    print('Η Χαρκτηριστική εξίσωση ειναι:',a6,'S^6 +',a5,'S^5 +',a4,'S^4 +',a3,'S^3 +',a2,'S^2 +',a1,'S + K =0')
-    print('\n\t')
-    print('Ο ΠΙΝΑΚΑΣ ROUTH ΕΙΝΑΙ:')
-    print("{:1.2f}\t\t\t{:1.2f}\t\t\t{:1.2f}\t\t{:s}\t\t{:1.1f}".format(a6,a4,a2,chr(75),0))
-    print("{:1.2f}\t\t\t{:1.2f}\t\t\t{:1.1f}\t\t{:1.1f}\t\t{:1.1f} ".format(a5,a3,a1,0,0))
-    print("{:1.1f}\t\t\t{:1.1f}\t\t\t{:s}\t\t{:1.1f}\t\t{:1.1f}".format(b1,b2,chr(75),0,0))
-    print("{:1.1f}\t\t\t{:1.1f}{:s}{:1.1f}{:s}\t\t{:1.1f}\t\t{:1.1f}\t\t{:1.1f} " .format(c1,a1,'-',a5/b1,chr(75),0,0,0))
-    print("{:1.1f}{:s}{:1.1f}{:s}\t\t{:s}\t\t\t{:1.1f}\t\t{:1.1f}\t\t{:1.1f} " .format(x1,'-',(a5/c1),chr(75),chr(75),0,0,0))
-    print("{:1.1f}{:s}{:1.1f}{:s}\t\t{:s}\t\t\t{:1.1f}\t\t{:1.1f}\t\t{:1.1f}" .format(a1,"-",((a5/a4)+(b1/c1)),chr(75),chr(75),0,0,0))
-    print("{:s}\t\t\t{:1.1f}\t\t\t{:1.1f}\t\t{:1.1f}\t\t{:1.1f} " .format('K',0,0,0,0))
-    
-    Kkr=a1/c2
-    
-    
-    if (a5>0 and a4>0 and b1>0 and c1>0 and Kkr>0):
-        import math
-        wkr=math.sqrt(Kkr/c1)      
-        print('\n Το Σύστημα είναι ΕΥΣΤΑΘΕΣ για τις τιμες του Κ: Κ<{:1.2f}  με Κκρ={:1.2f} και ωκρ={:1.2f} '.format(Kkr,Kkr,wkr))
-    else:
-        print('Το Σύστημα είναι ΑΣΤΑΘΕΣ') 
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = RouthLocusGUI(root)
+    root.mainloop()
