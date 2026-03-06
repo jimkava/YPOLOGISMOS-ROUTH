@@ -1,0 +1,3 @@
+control
+matplotlib
+numpy
