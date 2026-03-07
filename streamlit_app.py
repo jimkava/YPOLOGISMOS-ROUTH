@@ -99,8 +99,8 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
 
     with tab3:
         st.header("📈 Root Locus")
-        # For Root Locus we use the open loop without the k_user multiplier in the object
-        # to show the full path of poles.
+        # For Root Locus we use the open loop without the k_user multiplier 
+        # to show the full potential path of poles.
         sys_locus = ct.TransferFunction([1], den)
         fig, ax = plt.subplots(figsize=(8, 5))
         ct.root_locus(sys_locus, grid=True, ax=ax)
