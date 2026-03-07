@@ -94,24 +94,31 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
         # Σχεδίαση Γεωμετρικού Τόπου
         ct.root_locus(sys_open_unit, grid=True, ax=ax3)
         
+        # Προσθήκη απαλών διακεκομμένων αξόνων (X=0 και Y=0)
+        ax3.axhline(0, color='black', lw=1, alpha=0.5, ls='--')
+        ax3.axvline(0, color='black', lw=1, alpha=0.5, ls='--')
+        
         # Προσθήκη Κρίσιμων Σημείων και Ετικετών (Labels)
         if not np.isinf(k_cr_freq) and k_cr_freq is not None and w_cr_freq > 0:
             # Σημείο +j*w_cr
-            ax3.plot(0, w_cr_freq, 'ro', markersize=8, label=f'Critical Point')
-            ax3.annotate(f' +j{w_cr_freq:.2f}', xy=(0, w_cr_freq), xytext=(0.5, w_cr_freq),
+            ax3.plot(0, w_cr_freq, 'ro', markersize=7)
+            ax3.annotate(f' +j{w_cr_freq:.2f}', xy=(0, w_cr_freq), 
+                         xytext=(0.1, w_cr_freq + 0.05), # Πολύ κοντά στο σημείο
                          fontsize=10, fontweight='bold', color='red')
             
             # Σημείο -j*w_cr
-            ax3.plot(0, -w_cr_freq, 'ro', markersize=8)
-            ax3.annotate(f' -j{w_cr_freq:.2f}', xy=(0, -w_cr_freq), xytext=(0.5, -w_cr_freq),
+            ax3.plot(0, -w_cr_freq, 'ro', markersize=7)
+            ax3.annotate(f' -j{w_cr_freq:.2f}', xy=(0, -w_cr_freq), 
+                         xytext=(0.1, -w_cr_freq - 0.15), # Πολύ κοντά στο σημείο
                          fontsize=10, fontweight='bold', color='red')
             
-            ax3.legend()
-            st.success(f"The system crosses the imaginary axis at ±j{w_cr_freq:.2f} for K = {k_cr_freq:.2f}")
+            # Εμφάνιση τιμής Kcr μέσα στο γράφημα
+            ax3.text(0.5, 0.5, f'$K_{{cr}} = {k_cr_freq:.2f}$', transform=ax3.transAxes, 
+                     bbox=dict(facecolor='white', alpha=0.7), fontsize=10)
         
+        ax3.set_title("Root Locus with Stability Limits", fontsize=12)
         st.pyplot(fig3)
         st.download_button("📥 Download Root Locus (PNG)", convert_plt_to_bytes(fig3), "root_locus.png")
-
     # --- TAB 4: BODE ---
     with tab4:
         st.header("📊 Bode Diagram")
@@ -149,4 +156,5 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
 
 st.divider()
 st.caption("© 2026 Dimitrios Kavalieros - Control Systems Analysis Tool")
+
 
