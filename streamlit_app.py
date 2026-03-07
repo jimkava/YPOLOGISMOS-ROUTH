@@ -77,31 +77,66 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
         st.table(df_routh.style.format("{:.3f}"))
         st.download_button("📥 Download Routh Table (CSV)", df_routh.to_csv().encode('utf-8'), "routh.csv")
 
-   # --- TAB 2: STEP (ΜΕ ΠΡΟΣΤΑΣΙΑ) ---
+   # --- TAB 2: STEP RESPONSE (ENHANCED & SAFETY) ---
     with tab2:
-        st.header("⏱️ Step Response")
+        st.header("⏱️ Step Response & Performance Analysis")
+        
+        # Υπολογισμός Απόκρισης
         time, response = ct.step_response(sys_closed_user)
         fig2, ax2 = plt.subplots(figsize=(8, 5))
-        ax2.plot(time, response, 'b-', label=f'K = {k_user}')
-        ax2.axhline(1, color='red', linestyle='--')
-        ax2.set_title(f"Closed-Loop Response (K={k_user})")
+        ax2.plot(time, response, 'b-', lw=2, label=f'K = {k_user}')
+        ax2.axhline(1, color='red', linestyle='--', alpha=0.6)
+        ax2.set_title(f"Closed-Loop System Response (K={k_user})")
+        ax2.set_xlabel("Time (s)")
+        ax2.set_ylabel("Amplitude")
         ax2.grid(True, alpha=0.3)
         st.pyplot(fig2)
-        
-        # ΠΡΟΣΤΑΣΙΑ: Υπολογισμός info μόνο αν το σύστημα δεν "εκρήγνυται"
-        if np.max(response) < 100: # Αν η απόκριση είναι λογική
-            try:
-                info = ct.step_info(sys_closed_user)
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Rise Time", f"{info['RiseTime']:.3f} s")
-                c2.metric("Overshoot", f"{info['Overshoot']:.2f} %")
-                c3.metric("Settling Time", f"{info['SettlingTime']:.3f} s")
-            except:
-                st.warning("⚠️ Could not calculate metrics (System might be unstable).")
-        else:
-            st.error("❌ System is UNSTABLE: Step response diverges to infinity!")
+
+        try:
+            # 1. Λήψη Poles για υπολογισμό zeta και wn
+            poles = ct.poles(sys_closed_user)
+            # Κυρίαρχοι μιγαδικοί πόλοι (αυτοί που καθορίζουν την υπερύψωση)
+            complex_poles = poles[np.iscomplex(poles)]
             
-        st.download_button("📥 Download Plot", convert_plt_to_bytes(fig2), "step.png")
+            if len(complex_poles) > 0:
+                # Ο κυρίαρχος πόλος (πλησιέστερα στον j-άξονα)
+                dom_pole = complex_poles[np.argmax(dom_pole.real if 'dom_pole' in locals() else complex_poles.real)]
+                wn = np.abs(dom_pole)
+                zeta = -dom_pole.real / wn
+            else:
+                wn = np.abs(poles[np.argmax(poles.real)]) if len(poles)>0 else 0
+                zeta = 1.0 # Overdamped συστημα
+
+            # 2. Step Info για ακριβή στατιστικά
+            info = ct.step_info(sys_closed_user)
+            overshoot = info['Overshoot']
+            
+            # 3. Εμφάνιση Metrics
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Natural Frequency (ωn)", f"{wn:.2f} rad/s")
+            col2.metric("Damping Ratio (ζ)", f"{zeta:.3f}")
+            col3.metric("Overshoot (% Mp)", f"{overshoot:.2f} %")
+
+            # --- SAFETY WARNING LOGIC ---
+            if overshoot > 15.0:
+                st.error(f"⚠️ **SAFETY WARNING:** High Overshoot ({overshoot:.2f}%). The exoskeleton movement might be too aggressive for the user's joints. Consider reducing Gain K.")
+            elif overshoot > 5.0:
+                st.warning(f"🔔 **CAUTION:** Moderate Overshoot ({overshoot:.2f}%). Ensure the user is comfortable with the acceleration.")
+            else:
+                st.success("✅ **SMOOTH MOTION:** Overshoot is within safe limits for rehabilitation.")
+
+            st.divider()
+            
+            # Επιπλέον Χρονικά Χαρακτηριστικά
+            c1, c2, c3 = st.columns(3)
+            c1.write(f"**Rise Time:** {info['RiseTime']:.3f} s")
+            c2.write(f"**Settling Time:** {info['SettlingTime']:.3f} s")
+            c3.write(f"**Steady State Error:** {abs(1 - response[-1]):.4e}")
+
+        except Exception as e:
+            st.error("Could not calculate performance indices. The system is likely unstable.")
+        
+        st.download_button("📥 Download Step Data", convert_plt_to_bytes(fig2), "step_analysis.png")
     # --- TAB 3: ROOT LOCUS ---
     with tab3:
         st.header("📈 Root Locus Analysis")
@@ -148,5 +183,6 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
 
 st.divider()
 st.caption("© 2026 Dimitrios Kavalieros - Control Systems Analysis Tool")
+
 
 
