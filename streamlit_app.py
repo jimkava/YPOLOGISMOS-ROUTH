@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import math
+import io
 
 # Page Configuration
 st.set_page_config(page_title="Control Systems Suite", layout="wide")
@@ -27,12 +28,9 @@ k_user = st.sidebar.slider("Adjust Gain (K) for Step Response:", min_value=0.1, 
 
 # --- ANALYSIS EXECUTION ---
 if st.sidebar.button("RUN FULL ANALYSIS"):
-    # Open Loop: G(s) = K / (an*s^n + ... + a1*s)
     num = [k_user]
     den = coeffs + [0.0]
     sys_open = ct.TransferFunction(num, den)
-    
-    # Closed Loop: T(s) = G(s) / (1 + G(s))
     sys_closed = ct.feedback(sys_open, 1)
 
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
@@ -62,45 +60,43 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
         
         if k_cr:
             st.success(f"✅ **Critical Gain ($K_{{cr}}$): {k_cr:.2f}**")
-            try:
-                a_aux = final_matrix[n-2, 0]
-                b_aux = final_matrix[n-2, 1]
-                if a_aux != 0:
-                    w_cr = math.sqrt(abs(b_aux / a_aux))
-                    st.info(f"🔊 **Critical Frequency ($\omega_{{cr}}$): {w_cr:.2f} rad/s**")
-            except:
-                st.warning("Could not calculate $\omega_{cr}$ automatically.")
-            
-            df = pd.DataFrame(final_matrix, index=[f"s^{n-i}" for i in range(n+1)])
-            st.table(df.style.format("{:.2f}"))
+            df_routh = pd.DataFrame(final_matrix, index=[f"s^{n-i}" for i in range(n+1)])
+            st.table(df_routh.style.format("{:.2f}"))
+
+            # --- EXPORT ROUTH TABLE ---
+            csv_routh = df_routh.to_csv().encode('utf-8')
+            st.download_button(label="📥 Download Routh Table (CSV)", data=csv_routh, file_name='routh_table.csv', mime='text/csv')
         else:
-            st.warning("No stability limit found for K < 5000.")
+            st.warning("No stability limit found.")
 
     with tab2:
         st.header("⏱️ Step Response (Time Domain)")
-        st.write(f"Closed-loop response for **K = {k_user}**")
-        
         time, response = ct.step_response(sys_closed)
         
         fig, ax = plt.subplots(figsize=(8, 5))
-        ax.plot(time, response, 'b-', linewidth=2, label=f'Response (K={k_user})')
-        ax.axhline(1, color='red', linestyle='--', label='Target')
+        ax.plot(time, response, 'b-', linewidth=2)
+        ax.axhline(1, color='red', linestyle='--')
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Amplitude")
         ax.grid(True)
-        ax.legend()
         st.pyplot(fig)
         
         info = ct.step_info(sys_closed)
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Rise Time", f"{info['RiseTime']:.2f} s")
-        c2.metric("Overshoot", f"{info['Overshoot']:.2f} %")
-        c3.metric("Settling Time", f"{info['SettlingTime']:.2f} s")
+        
+        # --- EXPORT STEP METRICS ---
+        metrics_data = {
+            "Metric": ["Rise Time", "Overshoot", "Settling Time", "Peak", "Steady State Value"],
+            "Value": [info['RiseTime'], info['Overshoot'], info['SettlingTime'], info['Peak'], 1.0]
+        }
+        df_metrics = pd.DataFrame(metrics_data)
+        st.table(df_metrics)
+        
+        csv_metrics = df_metrics.to_csv(index=False).encode('utf-8')
+        st.download_button(label="📥 Download Performance Report (CSV)", data=csv_metrics, file_name='step_performance.csv', mime='text/csv')
 
+    # (Tabs 3-6 remain the same as previous version)
     with tab3:
         st.header("📈 Root Locus")
-        # For Root Locus we use the open loop without the k_user multiplier 
-        # to show the full potential path of poles.
         sys_locus = ct.TransferFunction([1], den)
         fig, ax = plt.subplots(figsize=(8, 5))
         ct.root_locus(sys_locus, grid=True, ax=ax)
