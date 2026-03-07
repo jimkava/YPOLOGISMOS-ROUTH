@@ -23,13 +23,12 @@ for i in range(n, 0, -1):
 
 # --- ANALYSIS EXECUTION ---
 if st.sidebar.button("RUN FULL ANALYSIS"):
-    # Define Open Loop Transfer Function: G(s) = 1 / (an*s^n + ... + a1*s)
+    # Define Open Loop Transfer Function
     num = [1.0]
     den = coeffs + [0.0]
     sys_open = ct.TransferFunction(num, den)
     
-    # Define Closed Loop Transfer Function (Unity Feedback): T(s) = G(s) / (1 + G(s))
-    # For a simple K=1 gain for the step response
+    # Define Closed Loop Transfer Function (Unity Feedback)
     sys_closed = ct.feedback(sys_open, 1)
 
     # Tabs for different plots
@@ -66,7 +65,6 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
                 if a_aux != 0:
                     w_cr = math.sqrt(abs(b_aux / a_aux))
                     st.info(f"🔊 **Critical Frequency ($\omega_{{cr}}$): {w_cr:.2f} rad/s**")
-                    st.latex(f"\\omega_{{cr}} = {w_cr:.2f} \\text{{ rad/s}}")
             except:
                 st.warning("Could not calculate $\omega_{cr}$ automatically.")
             
@@ -77,26 +75,24 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
 
     with tab2:
         st.header("⏱️ Step Response (Time Domain)")
-        st.write("Response of the closed-loop system to a unit step input (for K=1).")
+        st.write("Closed-loop system response to unit step input (K=1).")
         
         time, response = ct.step_response(sys_closed)
         
         fig, ax = plt.subplots(figsize=(8, 5))
-        ax.plot(time, response, b='-')
-        ax.axhline(1, color='red', linestyle='--', label='Target Value')
-        ax.set_title("Closed-Loop Step Response")
-        ax.set_xlabel("Time (seconds)")
+        ax.plot(time, response, 'b-', linewidth=2) # ΔΙΟΡΘΩΜΕΝΟ ΕΔΩ
+        ax.axhline(1, color='red', linestyle='--', label='Target')
+        ax.set_xlabel("Time (s)")
         ax.set_ylabel("Amplitude")
         ax.grid(True)
         ax.legend()
         st.pyplot(fig)
         
-        # Calculate key metrics
         info = ct.step_info(sys_closed)
-        col_m1, col_m2, col_m3 = st.columns(3)
-        col_m1.metric("Rise Time", f"{info['RiseTime']:.2f} s")
-        col_m2.metric("Overshoot", f"{info['Overshoot']:.2f} %")
-        col_m3.metric("Settling Time", f"{info['SettlingTime']:.2f} s")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Rise Time", f"{info['RiseTime']:.2f} s")
+        c2.metric("Overshoot", f"{info['Overshoot']:.2f} %")
+        c3.metric("Settling Time", f"{info['SettlingTime']:.2f} s")
 
     with tab3:
         st.header("📈 Root Locus")
