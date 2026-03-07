@@ -8,7 +8,7 @@ import pandas as pd
 st.set_page_config(page_title="Control Systems Suite", layout="wide")
 
 st.title("🚀 Advanced Control Systems Analysis")
-st.subheader("DIMITRIOS KAVALIEROS MSc. ELECTRICAL ENGINEER")
+st.subheader("DIMITRIOS KAVALIEROS\n Electrical Engineering & Informatics M.Sc. M.Ed. ")
 
 # --- SIDEBAR: INPUT PARAMETERS ---
 st.sidebar.header("⚙️ System Parameters")
@@ -82,3 +82,4 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
 
 st.divider()
 st.caption("© 2026 Dimitrios Kavalieros MSc. - Professional Control Engineering Tool")
+
