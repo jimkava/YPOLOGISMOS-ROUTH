@@ -77,7 +77,7 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
         st.table(df_routh.style.format("{:.3f}"))
         st.download_button("📥 Download Routh Table (CSV)", df_routh.to_csv().encode('utf-8'), "routh.csv")
 
-    # --- TAB 2: STEP ---
+   # --- TAB 2: STEP (ΜΕ ΠΡΟΣΤΑΣΙΑ) ---
     with tab2:
         st.header("⏱️ Step Response")
         time, response = ct.step_response(sys_closed_user)
@@ -88,13 +88,20 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
         ax2.grid(True, alpha=0.3)
         st.pyplot(fig2)
         
-        info = ct.step_info(sys_closed_user)
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Rise Time", f"{info['RiseTime']:.3f} s")
-        c2.metric("Overshoot", f"{info['Overshoot']:.2f} %")
-        c3.metric("Settling Time", f"{info['SettlingTime']:.3f} s")
+        # ΠΡΟΣΤΑΣΙΑ: Υπολογισμός info μόνο αν το σύστημα δεν "εκρήγνυται"
+        if np.max(response) < 100: # Αν η απόκριση είναι λογική
+            try:
+                info = ct.step_info(sys_closed_user)
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Rise Time", f"{info['RiseTime']:.3f} s")
+                c2.metric("Overshoot", f"{info['Overshoot']:.2f} %")
+                c3.metric("Settling Time", f"{info['SettlingTime']:.3f} s")
+            except:
+                st.warning("⚠️ Could not calculate metrics (System might be unstable).")
+        else:
+            st.error("❌ System is UNSTABLE: Step response diverges to infinity!")
+            
         st.download_button("📥 Download Plot", convert_plt_to_bytes(fig2), "step.png")
-
     # --- TAB 3: ROOT LOCUS ---
     with tab3:
         st.header("📈 Root Locus Analysis")
@@ -141,4 +148,5 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
 
 st.divider()
 st.caption("© 2026 Dimitrios Kavalieros - Control Systems Analysis Tool")
+
 
