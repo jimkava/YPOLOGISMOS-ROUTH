@@ -86,16 +86,31 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
         st.pyplot(fig2)
         st.download_button("📥 Download Step Response (PNG)", convert_plt_to_bytes(fig2), "step.png")
 
-    # --- TAB 3: ROOT LOCUS ---
+# --- TAB 3: ROOT LOCUS ---
     with tab3:
-        st.header("📈 Root Locus")
-        fig3, ax3 = plt.subplots(figsize=(8, 5))
+        st.header("📈 Root Locus Analysis")
+        fig3, ax3 = plt.subplots(figsize=(8, 6))
+        
+        # Σχεδίαση Γεωμετρικού Τόπου
         ct.root_locus(sys_open_unit, grid=True, ax=ax3)
-        if not np.isinf(k_cr_freq) and k_cr_freq is not None:
-            ax3.plot(0, w_cr_freq, 'ro', label='Crit. Point')
-            ax3.plot(0, -w_cr_freq, 'ro')
+        
+        # Προσθήκη Κρίσιμων Σημείων και Ετικετών (Labels)
+        if not np.isinf(k_cr_freq) and k_cr_freq is not None and w_cr_freq > 0:
+            # Σημείο +j*w_cr
+            ax3.plot(0, w_cr_freq, 'ro', markersize=8, label=f'Critical Point')
+            ax3.annotate(f' +j{w_cr_freq:.2f}', xy=(0, w_cr_freq), xytext=(0.5, w_cr_freq),
+                         fontsize=10, fontweight='bold', color='red')
+            
+            # Σημείο -j*w_cr
+            ax3.plot(0, -w_cr_freq, 'ro', markersize=8)
+            ax3.annotate(f' -j{w_cr_freq:.2f}', xy=(0, -w_cr_freq), xytext=(0.5, -w_cr_freq),
+                         fontsize=10, fontweight='bold', color='red')
+            
+            ax3.legend()
+            st.success(f"The system crosses the imaginary axis at ±j{w_cr_freq:.2f} for K = {k_cr_freq:.2f}")
+        
         st.pyplot(fig3)
-        st.download_button("📥 Download Root Locus (PNG)", convert_plt_to_bytes(fig3), "locus.png")
+        st.download_button("📥 Download Root Locus (PNG)", convert_plt_to_bytes(fig3), "root_locus.png")
 
     # --- TAB 4: BODE ---
     with tab4:
@@ -134,3 +149,4 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
 
 st.divider()
 st.caption("© 2026 Dimitrios Kavalieros - Control Systems Analysis Tool")
+
