@@ -16,7 +16,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("🎛️ Stability Analysis: Routh-Hurwitz & Root Locus")
-st.subheader("Dimitrios Kavalieros Electrical Engineering & Informatics M.Sc. M.Ed. ")
+st.subheader("Dimitrios Kavalieros\n Electrical Engineering & Informatics M.Sc. M.Ed. ")
 
 # --- SIDEBAR: INPUT PARAMETERS ---
 st.sidebar.header("⚙️ System Parameters")
@@ -117,4 +117,5 @@ if st.sidebar.button("RUN ANALYSIS"):
 
 st.divider()
 st.caption("© 2026 Dimitrios Kavalieros MSc. - Control Systems Analysis Tool")
+
 
