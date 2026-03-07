@@ -26,6 +26,12 @@ st.sidebar.divider()
 st.sidebar.header("🕹️ Interactive Control")
 k_user = st.sidebar.slider("Adjust Gain (K) for Step Response:", min_value=0.1, max_value=100.0, value=1.0, step=0.1)
 
+# Helper function to convert plot to bytes for download
+def convert_plt_to_bytes(figure):
+    buf = io.BytesIO()
+    figure.savefig(buf, format="png", dpi=300)
+    return buf.getvalue()
+
 # --- ANALYSIS EXECUTION ---
 if st.sidebar.button("RUN FULL ANALYSIS"):
     num = [k_user]
@@ -39,7 +45,6 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
 
     with tab1:
         st.header("📋 Routh-Hurwitz Stability Table")
-        
         def get_full_analysis(n_deg, c_list):
             test_ks = np.linspace(0.01, 5000, 10000)
             for k in test_ks:
@@ -52,73 +57,59 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
                     for c in range(cols - 1):
                         if r_mat[r-1, 0] == 0: r_mat[r-1, 0] = 1e-5
                         r_mat[r, c] = (r_mat[r-1, 0] * r_mat[r-2, c+1] - r_mat[r-2, 0] * r_mat[r-1, c+1]) / r_mat[r-1, 0]
-                if r_mat[n_deg-1, 0] <= 0.01:
-                    return k, r_mat
+                if r_mat[n_deg-1, 0] <= 0.01: return k, r_mat
             return None, None
 
         k_cr, final_matrix = get_full_analysis(n, coeffs)
-        
         if k_cr:
             st.success(f"✅ **Critical Gain ($K_{{cr}}$): {k_cr:.2f}**")
             df_routh = pd.DataFrame(final_matrix, index=[f"s^{n-i}" for i in range(n+1)])
             st.table(df_routh.style.format("{:.2f}"))
-
-            # --- EXPORT ROUTH TABLE ---
-            csv_routh = df_routh.to_csv().encode('utf-8')
-            st.download_button(label="📥 Download Routh Table (CSV)", data=csv_routh, file_name='routh_table.csv', mime='text/csv')
-        else:
-            st.warning("No stability limit found.")
+            st.download_button("📥 Download Table (CSV)", df_routh.to_csv().encode('utf-8'), "routh_table.csv", "text/csv")
 
     with tab2:
-        st.header("⏱️ Step Response (Time Domain)")
+        st.header("⏱️ Step Response")
         time, response = ct.step_response(sys_closed)
-        
-        fig, ax = plt.subplots(figsize=(8, 5))
-        ax.plot(time, response, 'b-', linewidth=2)
-        ax.axhline(1, color='red', linestyle='--')
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Amplitude")
-        ax.grid(True)
-        st.pyplot(fig)
-        
-        info = ct.step_info(sys_closed)
-        
-        # --- EXPORT STEP METRICS ---
-        metrics_data = {
-            "Metric": ["Rise Time", "Overshoot", "Settling Time", "Peak", "Steady State Value"],
-            "Value": [info['RiseTime'], info['Overshoot'], info['SettlingTime'], info['Peak'], 1.0]
-        }
-        df_metrics = pd.DataFrame(metrics_data)
-        st.table(df_metrics)
-        
-        csv_metrics = df_metrics.to_csv(index=False).encode('utf-8')
-        st.download_button(label="📥 Download Performance Report (CSV)", data=csv_metrics, file_name='step_performance.csv', mime='text/csv')
+        fig2, ax2 = plt.subplots(figsize=(8, 5))
+        ax2.plot(time, response, 'b-', linewidth=2)
+        ax2.axhline(1, color='red', linestyle='--')
+        ax2.set_title("Step Response")
+        ax2.grid(True)
+        st.pyplot(fig2)
+        # Download Button for Step Response
+        st.download_button("📥 Download Step Response (PNG)", convert_plt_to_bytes(fig2), "step_response.png", "image/png")
 
-    # (Tabs 3-6 remain the same as previous version)
     with tab3:
         st.header("📈 Root Locus")
         sys_locus = ct.TransferFunction([1], den)
-        fig, ax = plt.subplots(figsize=(8, 5))
-        ct.root_locus(sys_locus, grid=True, ax=ax)
-        st.pyplot(fig)
+        fig3, ax3 = plt.subplots(figsize=(8, 5))
+        ct.root_locus(sys_locus, grid=True, ax=ax3)
+        st.pyplot(fig3)
+        st.download_button("📥 Download Root Locus (PNG)", convert_plt_to_bytes(fig3), "root_locus.png", "image/png")
 
     with tab4:
         st.header("📊 Bode Diagram")
-        fig, ax = plt.subplots(2, 1, figsize=(8, 8))
-        ct.bode_plot(sys_open, dB=True, Hz=False, grid=True, ax=ax)
-        st.pyplot(fig)
+        fig4, ax4 = plt.subplots(2, 1, figsize=(8, 8))
+        ct.bode_plot(sys_open, dB=True, Hz=False, grid=True)
+        # Bode plot generates its own figure in control lib, we grab the current one
+        fig4 = plt.gcf()
+        st.pyplot(fig4)
+        st.download_button("📥 Download Bode Plot (PNG)", convert_plt_to_bytes(fig4), "bode_plot.png", "image/png")
 
     with tab5:
-        st.header("🌀 Nyquist (Polar) Plot")
-        fig, ax = plt.subplots(figsize=(7, 6))
-        ct.nyquist_plot(sys_open, ax=ax)
-        st.pyplot(fig)
+        st.header("🌀 Nyquist Plot")
+        fig5, ax5 = plt.subplots(figsize=(7, 6))
+        ct.nyquist_plot(sys_open, ax=ax5)
+        st.pyplot(fig5)
+        st.download_button("📥 Download Nyquist (PNG)", convert_plt_to_bytes(fig5), "nyquist.png", "image/png")
 
     with tab6:
         st.header("📉 Nichols Chart")
-        fig = plt.figure(figsize=(8, 6))
+        fig6 = plt.figure(figsize=(8, 6))
         ct.nichols_plot(sys_open, grid=True)
-        st.pyplot(plt.gcf())
+        fig6 = plt.gcf()
+        st.pyplot(fig6)
+        st.download_button("📥 Download Nichols (PNG)", convert_plt_to_bytes(fig6), "nichols.png", "image/png")
 
 st.divider()
 st.caption("© 2026 Dimitrios Kavalieros - Control Systems Analysis Tool")
