@@ -8,7 +8,7 @@ import io
 st.set_page_config(page_title="Full Control Suite | gait2392", layout="wide")
 
 st.title("🚀 Cloud Digital Twin: Full Control & Actuator Suite")
-st.subheader("DIMITRIOS KAVALLIEROS - Adaptive Framework Analysis")
+st.subheader("DIMITRIOS KAVALIEROS\nElectrical Engineering & Informatics M.Sc. M.Ed.")
 
 # --- SIDEBAR ---
 st.sidebar.header("🦴 gait2392 Biomechanics")
@@ -84,3 +84,4 @@ if st.sidebar.button("RUN FULL ANALYSIS"):
             fig_nic = plt.figure()
             ct.nichols_plot(sys_open, grid=True)
             st.pyplot(fig_nic)
+
