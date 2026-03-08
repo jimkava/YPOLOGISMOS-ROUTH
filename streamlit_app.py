@@ -5,97 +5,82 @@ import numpy as np
 import pandas as pd
 import io
 
-# Page Configuration
-st.set_page_config(page_title="Adaptive Exoskeleton Analysis", layout="wide")
+st.set_page_config(page_title="Full Control Suite | gait2392", layout="wide")
 
-st.title("🚀 Cloud Digital Twin: Adaptive Actuator Analysis")
-st.subheader("DIMITRIOS KAVALIEROS - gait2392 Adaptive Framework")
+st.title("🚀 Cloud Digital Twin: Full Control & Actuator Suite")
+st.subheader("DIMITRIOS KAVALLIEROS - Adaptive Framework Analysis")
 
-# --- SIDEBAR: ΠΑΡΑΜΕΤΡΟΙ ΜΟΝΤΕΛΟΥ & ΕΝΕΡΓΟΠΟΙΗΤΗ ---
-st.sidebar.header("🦴 Biomechanical Properties (gait2392)")
+# --- SIDEBAR ---
+st.sidebar.header("🦴 gait2392 Biomechanics")
 M = st.sidebar.number_input("Inertia M (kg·m²)", value=0.18, format="%.3f")
 B = st.sidebar.number_input("Damping B (Nms/rad)", value=0.50, format="%.2f")
 ks = st.sidebar.number_input("Stiffness ks (Nm/rad)", value=2.00, format="%.2f")
 
 st.sidebar.divider()
-st.sidebar.header("⚙️ Actuator Selection (Digital Twin)")
-T_motor = st.sidebar.slider("Motor Time Constant (T) [s]:", 0.01, 0.50, 0.10)
+st.sidebar.header("⚙️ Actuator (Motor) Delay")
+T_motor = st.sidebar.slider("Motor Time Constant (T):", 0.01, 0.50, 0.05)
 
 st.sidebar.divider()
 st.sidebar.header("🕹️ Adaptive Supervisor")
-beta = st.sidebar.slider("Weakness Level (β):", 0.0, 1.0, 0.5)
-K_base = st.sidebar.slider("Base Gain (K):", 1.0, 500.0, 100.0)
+beta = st.sidebar.slider("Weakness Level (β):", 0.0, 1.0, 0.2)
+K_base = st.sidebar.slider("Base Gain (K):", 1.0, 500.0, 150.0)
 
-# --- ΥΠΟΛΟΓΙΣΜΟΣ ADAPTIVE GAIN (Βάσει του Paper) ---
-# Εκθετική αύξηση της υποβοήθησης J(β)
-alpha = 3.0 
-K_ad = K_base * (np.exp(alpha * beta) - 1) / (np.exp(alpha) - 1)
+# --- ADAPTIVE LOGIC ---
+alpha_val = 3.0 
+K_ad = K_base * (np.exp(alpha_val * beta) - 1) / (np.exp(alpha_val) - 1)
 
-# --- ΣΥΝΤΕΛΕΣΤΕΣ ΧΑΡΑΚΤΗΡΙΣΤΙΚΗΣ ΕΞΙΣΩΣΗΣ ---
-# (T*M)s^3 + (M + T*B)s^2 + (B + T*ks)s + (ks + Kad) = 0
-a3 = T_motor * M
-a2 = M + (T_motor * B)
-a1 = B + (T_motor * ks)
-a0 = ks + K_ad
+# Coefficients for (T*M)s^3 + (M+T*B)s^2 + (B+T*ks)s + (ks+Kad) = 0
+a3, a2, a1, a0 = T_motor*M, M+T_motor*B, B+T_motor*ks, ks+K_ad
 
-characteristic_coeffs = [a3, a2, a1, a0]
+if st.sidebar.button("RUN FULL ANALYSIS"):
+    # Systems Definition
+    num_open = [1]
+    den_open = [a3, a2, a1, ks] # Open loop for frequency analysis
+    sys_open = K_ad * ct.TransferFunction(num_open, den_open)
+    sys_closed = ct.feedback(sys_open, 1)
 
-def convert_plt_to_bytes(figure):
-    buf = io.BytesIO()
-    figure.savefig(buf, format="png", dpi=300, bbox_inches='tight')
-    return buf.getvalue()
+    tabs = st.tabs(["Stability", "Step Response", "Root Locus", "Bode Plot", "Nyquist & Nichols"])
 
-if st.sidebar.button("RUN ADAPTIVE ANALYSIS"):
-    
-    # Ορισμός Συστημάτων
-    sys_open = ct.TransferFunction([1], characteristic_coeffs[:-1] + [0])
-    sys_closed = ct.feedback(K_ad * ct.TransferFunction([1], [T_motor*M, M+T_motor*B, B+T_motor*ks, ks]), 1)
+    with tabs[0]:
+        st.header("📋 Routh-Hurwitz")
+        r_mat = np.zeros((4, 2))
+        r_mat[0,0], r_mat[0,1] = a3, a1
+        r_mat[1,0], r_mat[1,1] = a2, a0
+        r_mat[2,0] = (r_mat[1,0]*r_mat[0,1] - r_mat[0,0]*r_mat[1,1])/r_mat[1,0]
+        r_mat[3,0] = a0
+        st.table(pd.DataFrame(r_mat, index=["s^3","s^2","s^1","s^0"]))
+        if np.all(r_mat[:,0] > 0): st.success("✅ Stable System")
+        else: st.error("❌ Unstable System")
 
-    tab1, tab2, tab3 = st.tabs(["Stability (Routh)", "Step Response", "Root Locus"])
+    with tabs[1]:
+        st.header("⏱️ Step Response")
+        t, y = ct.step_response(sys_closed)
+        fig, ax = plt.subplots()
+        ax.plot(t, y)
+        ax.axhline(1, color='r', ls='--')
+        st.pyplot(fig)
 
-    # --- TAB 1: ROUTH ---
-    with tab1:
-        st.header("📋 Routh-Hurwitz Stability Table")
-        rows, cols = 4, 2
-        r_mat = np.zeros((rows, cols))
-        r_mat[0, 0], r_mat[0, 1] = a3, a1
-        r_mat[1, 0], r_mat[1, 1] = a2, a0
-        
-        # Υπολογισμός σειράς s^1
-        r_mat[2, 0] = (r_mat[1, 0] * r_mat[0, 1] - r_mat[0, 0] * r_mat[1, 1]) / r_mat[1, 0]
-        # Υπολογισμός σειράς s^0
-        r_mat[3, 0] = (r_mat[2, 0] * r_mat[1, 1]) / r_mat[2, 0] if r_mat[2, 0] != 0 else 0
-        
-        df_routh = pd.DataFrame(r_mat, index=["s^3", "s^2", "s^1", "s^0"])
-        st.table(df_routh.style.format("{:.3f}"))
-        
-        if np.all(r_mat[:, 0] > 0):
-            st.success(f"✅ Σύστημα Ευσταθές για β={beta}")
-        else:
-            st.error("❌ Σύστημα Ασταθές! Η καθυστέρηση του μοτέρ ή το υψηλό Gain προκαλούν απόκλιση.")
+    with tabs[2]:
+        st.header("📈 Root Locus")
+        fig_rl, ax_rl = plt.subplots()
+        ct.root_locus(sys_open/K_ad, grid=True, ax=ax_rl)
+        st.pyplot(fig_rl)
 
-    # --- TAB 2: STEP ---
-    with tab2:
-        st.header("⏱️ Step Response & Safety Analysis")
-        time, response = ct.step_response(sys_closed)
-        fig2, ax2 = plt.subplots()
-        ax2.plot(time, response, lw=2, label="Adaptive Response")
-        ax2.axhline(1, color='r', ls='--')
-        ax2.grid(True)
-        st.pyplot(fig2)
-        
-        info = ct.step_info(sys_closed)
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Overshoot", f"{info['Overshoot']:.2f} %")
-        c2.metric("Settling Time", f"{info['SettlingTime']:.3f} s")
-        c3.metric("K_adaptive", f"{K_ad:.2f} Nm/rad")
+    with tabs[3]:
+        st.header("📊 Bode Diagram")
+        fig_bode = plt.figure(figsize=(10, 8))
+        ct.bode_plot(sys_open, dB=True, Hz=False, grid=True, margins=True)
+        st.pyplot(fig_bode)
 
-    # --- TAB 3: ROOT LOCUS ---
-    with tab3:
-        st.header("📈 Root Locus (Actuator-Plant Interaction)")
-        fig3, ax3 = plt.subplots()
-        ct.root_locus(ct.TransferFunction([1], [T_motor*M, M+T_motor*B, B+T_motor*ks, ks]), grid=True, ax=ax3)
-        st.pyplot(fig3)
-
-st.divider()
-st.caption("© 2026 Dimitrios Kavalieros - Digital Twin Actuator Selection Suite")
+    with tabs[4]:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.header("🌀 Nyquist Plot")
+            fig_ny, ax_ny = plt.subplots()
+            ct.nyquist_plot(sys_open, ax=ax_ny)
+            st.pyplot(fig_ny)
+        with col2:
+            st.header("📉 Nichols Chart")
+            fig_nic = plt.figure()
+            ct.nichols_plot(sys_open, grid=True)
+            st.pyplot(fig_nic)
