@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Υπολογισμός Συντελεστή Ταυτοχρονισμού</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222636;
+      --border: #2e3348;
+      --accent: #4f8ef7;
+      --accent2: #7c5cfc;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a1d27 0%, #1e2235 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    header .icon {
+      width: 46px; height: 46px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    header h1 { font-size: 18px; font-weight: 700; color: var(--text); }
+    header p  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 16px 24px 0;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      border-radius: 8px 8px 0 0;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all .2s;
+      border-bottom: 2px solid transparent;
+      position: relative;
+      bottom: -1px;
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      background: var(--bg);
+    }
+
+    .tab-btn:hover:not(.active) { color: var(--text); background: var(--surface2); }
+
+    .tab-panel { display: none; padding: 24px; }
+    .tab-panel.active { display: block; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    @media(max-width: 700px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+
+    input, select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 7px;
+      padding: 8px 11px;
+      font-size: 13px;
+      transition: border .2s;
+      outline: none;
+    }
+
+    input:focus, select:focus { border-color: var(--accent); }
+
+    .form-group { margin-bottom: 14px; }
+    .form-group:last-child { margin-bottom: 0; }
+
+    /* Devices table */
+    .devices-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .devices-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .devices-table th {
+      text-align: left;
+      padding: 8px 10px;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .devices-table td {
+      padding: 6px 4px;
+      vertical-align: middle;
+    }
+
+    .devices-table tr:not(:last-child) td { border-bottom: 1px solid #1e2235; }
+
+    .devices-table input, .devices-table select {
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+
+    .devices-table .device-name-input { width: 140px; }
+    .devices-table .power-input { width: 90px; }
+    .devices-table .hours-input { width: 75px; }
+    .devices-table .phase-select { width: 80px; }
+
+    @media(max-width:700px) {
+      .devices-table .device-name-input { width: 90px; }
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+    }
+    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+    .btn-success {
+      background: var(--green);
+      color: #fff;
+    }
+    .btn-success:hover { filter: brightness(1.1); }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+
+    .btn-danger {
+      background: rgba(239,68,68,.15);
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,.3);
+    }
+    .btn-danger:hover { background: rgba(239,68,68,.25); }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    .btn-outline:hover { background: rgba(79,142,247,.1); }
+
+    .calc-btn-row {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* Results */
+    .results {
+      margin-top: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+
+    .results-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .kpi {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+
+    .kpi-label { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+    .kpi-value { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.1; }
+    .kpi-unit  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .kpi.green  { border-color: rgba(34,197,94,.4);  background: rgba(34,197,94,.05); }
+    .kpi.yellow { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.05); }
+    .kpi.red    { border-color: rgba(239,68,68,.4);  background: rgba(239,68,68,.05); }
+    .kpi.blue   { border-color: rgba(79,142,247,.4); background: rgba(79,142,247,.05); }
+
+    .kpi.green  .kpi-value { color: var(--green); }
+    .kpi.yellow .kpi-value { color: var(--yellow); }
+    .kpi.red    .kpi-value { color: var(--red); }
+    .kpi.blue   .kpi-value { color: var(--accent); }
+
+    /* Status bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .status-bar.ok     { background: rgba(34,197,94,.1);  border: 1px solid rgba(34,197,94,.4);  color: var(--green); }
+    .status-bar.warn   { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.4); color: var(--yellow); }
+    .status-bar.danger { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.4);  color: var(--red); }
+
+    /* Breakdown table */
+    .breakdown {
+      margin-top: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .breakdown table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .breakdown th {
+      background: var(--surface2);
+      padding: 8px 12px;
+      text-align: right;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .breakdown th:first-child { text-align: left; }
+
+    .breakdown td {
+      padding: 7px 12px;
+      text-align: right;
+      border-top: 1px solid var(--border);
+    }
+
+    .breakdown td:first-child { text-align: left; font-weight: 500; }
+
+    .breakdown tr:hover td { background: rgba(255,255,255,.02); }
+
+    .bar-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+    .mini-bar  { flex: 1; max-width: 70px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .mini-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s; }
+
+    /* Recommendation card */
+    .recommendation {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 14px;
+    }
+
+    .rec-title { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 10px; }
+
+    .rec-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    .rec-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+
+    .rec-item .ri-label { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+    .rec-item .ri-value { font-size: 16px; font-weight: 700; color: var(--accent); }
+    .rec-item .ri-sub   { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* Preset devices */
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .preset-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .preset-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,.08); }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 8px;
+    }
+
+    .hidden { display: none !important; }
+
+    .ks-gauge-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 10px 0;
+    }
+
+    .ks-gauge {
+      width: 120px;
+      height: 60px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ks-arc-bg, .ks-arc-fill {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      top: 0; left: 0;
+    }
+
+    .ks-gauge-label {
+      font-size: 22px;
+      font-weight: 800;
+      margin-top: 6px;
+    }
+
+    .ks-gauge-sub { font-size: 11px; color: var(--muted); }
+
+    /* Tooltip */
+    .info-tip {
+      display: inline-block;
+      width: 15px; height: 15px;
+      border-radius: 50%;
+      background: var(--border);
+      color: var(--muted);
+      font-size: 10px;
+      text-align: center;
+      line-height: 15px;
+      cursor: help;
+      position: relative;
+    }
+
+    .info-tip:hover::after {
+      content: attr(data-tip);
+      position: absolute;
+      left: 20px;
+      top: -4px;
+      background: #222636;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      white-space: nowrap;
+      z-index: 100;
+      pointer-events: none;
+      width: max-content;
+      max-width: 220px;
+      white-space: normal;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 20px 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 11px;
+      border-top: 1px solid var(--border);
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .results { animation: fadeIn .3s ease; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="icon">⚡</div>
+  <div>
+    <h1>Συντελεστής Ταυτοχρονισμού</h1>
+    <p>Υπολογισμός ηλεκτρικών γραμμών &amp; φορτίων</p>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab(1)">📐 Μέθοδος 1 — Γνωστή Γραμμή</button>
+  <button class="tab-btn" onclick="switchTab(2)">🔍 Μέθοδος 2 — Εύρεση Γραμμής</button>
+</div>
+
+<!-- ===== TAB 1 ===== -->
+<div id="tab1" class="tab-panel active">
+
+  <div class="grid-2" style="align-items:start">
+
+    <!-- Left: Line config -->
+    <div>
+      <div class="card">
+        <div class="card-title">⚙️ Παράμετροι Γραμμής</div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Διατομή καλωδίου</label>
+            <select id="t1-cable">
+              <option value="1.5">3 × 1,5 mm²</option>
+              <option value="2.5" selected>3 × 2,5 mm²</option>
+              <option value="4">3 × 4 mm²</option>
+              <option value="6">3 × 6 mm²</option>
+              <option value="10">3 × 10 mm²</option>
+              <option value="16">3 × 16 mm²</option>
+              <option value="25">3 × 25 mm²</option>
+              <option value="35">3 × 35 mm²</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Ασφάλεια (A)</label>
+            <select id="t1-fuse">
+              <option value="6">6 A</option>
+              <option value="10">10 A</option>
+              <option value="16" selected>16 A</option>
+              <option value="20">20 A</option>
+              <option value="25">25 A</option>
+              <option value="32">32 A</option>
+              <option value="40">40 A</option>
+              <option value="50">50 A</option>
+              <option value="63">63 A</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="form-group">
+            <label>Τάση (V)</label>
+            <select id="t1-voltage">
+              <option value="230" selected>230 V (1φ)</option>
+              <option value="400">400 V (3φ)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>cosφ
+              <span class="info-tip" data-tip="Συντελεστής ισχύος. Για φωτισμό 1.0, για μικτά 0.85–0.95, για κινητήρες 0.7–0.85">?</span>
+            </label>
+            <input type="number" id="t1-cosphi" value="0.90" min="0.5" max="1" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Περίοδος αναφοράς (h)
+              <span class="info-tip" data-tip="Ώρες αναφοράς για τον υπολογισμό χρήσης (π.χ. 24 για ημερήσια, 8 για εργάσιμες)">?</span>
+            </label>
+            <input type="number" id="t1-period" value="24" min="1" max="24" step="1" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Devices -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">🔌 Καταναλωτές</div>
+
+        <p class="section-title">Γρήγορη προσθήκη</p>
+        <div class="presets" id="t1-presets"></div>
+
+        <div class="devices-header">
+          <span style="color:var(--muted);font-size:12px" id="t1-device-count">0 συσκευές</span>
+          <button class="btn btn-outline btn-sm" onclick="addDeviceRow('t1')">+ Προσθήκη συσκευής</button>
+        </div>
+
+        <div style="overflow-x:auto">
+          <table class="devices-table">
+            <thead>
+              <tr>
+                <th>Συσκευή</th>
+                <th>Ισχύς (W)</th>
+                <th>Ώρες/ημέρα
+                  <span class="info-tip" data-tip="Πόσες ώρες την ημέρα λειτουργεί η συσκευή (στο πλαίσιο της περιόδου αναφοράς)">?</span>
+                </th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="t1-devices-body"></tbody>
+          </table>
+        </div>
+
+        <div class="calc-btn-row">
+          <button class="btn btn-primary" onclick="calculate1()">⚡ Υπολογισμός</button>
+          <button class="btn btn-outline btn-sm" onclick="clearDevices('t1')">Καθαρισμός</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Results -->
+    <div>
+      <div id="t1-results" class="hidden">
+
+        <div class="card">
+          <div class="results-title">📊 Αποτελέσματα</div>
+
+          <div id="t1-status" class="status-bar ok"></div>
+
+          <div class="kpi-grid">
+            <div class="kpi blue">
+              <div class="kpi-label">Συντελεστής Ταυτοχρ.</div>
+              <div class="kpi-value" id="t1-ks">—</div>
+              <div class="kpi-unit">ks</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Συνολική εγκατεστ. ισχύς</div>
+              <div class="kpi-value" id="t1-ptotal">—</div>
+              <div class="kpi-unit">W</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Ταυτόχρονη ισχύς</div>
+              <div class="kpi-value" id="t1-psim">—</div>
+              <div class="kpi-unit">W</div>
+            </div>
+            <div class="kpi" id="t1-kpi-I">
+              <div class="kpi-label">Ρεύμα λειτουργίας</div>
+              <div class="kpi-value" id="t1-Icalc">—</div>
+              <div class="kpi-unit">A</div>
+            </div>
+            <div class="kpi" id="t1-kpi-fuse">
+              <div class="kpi-label">Ρεύμα ασφάλειας</div>
+              <div class="kpi-value" id="t1-Ifuse">—</div>
+              <div class="kpi-unit">A</div>
+            </div>
+            <div class="kpi" id="t1-kpi-cable">
+              <div class="kpi-label">Χωρητικότητα καλωδίου</div>
+              <div class="kpi-value" id="t1-Icable">—</div>
+              <div class="kpi-unit">A</div>
+            </div>
+          </div>
+
+          <!-- Check rows -->
+          <div id="t1-checks"></div>
+
+          <!-- Breakdown -->
+          <div class="breakdown" id="t1-breakdown"></div>
+        </div>
+
+      </div>
+      <div id="t1-placeholder" style="display:flex;align-items:center;justify-content:center;height:300px;color:var(--muted);font-size:13px;text-align:center;">
+        <div>
+          <div style="font-size:40px;margin-bottom:12px">📐</div>
+          <div>Συμπληρώστε τα στοιχεία της γραμμής<br>και τους καταναλωτές,<br>μετά πατήστε <strong>Υπολογισμός</strong>.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== TAB 2 ===== -->
+<div id="tab2" class="tab-panel">
+
+  <div class="grid-2" style="align-items:start">
+
+    <!-- Left -->
+    <div>
+      <div class="card">
+        <div class="card-title">⚙️ Παράμετροι</div>
+        <div class="grid-3">
+          <div class="form-group">
+            <label>Τάση (V)</label>
+            <select id="t2-voltage">
+              <option value="230" selected>230 V (1φ)</option>
+              <option value="400">400 V (3φ)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>cosφ</label>
+            <input type="number" id="t2-cosphi" value="0.90" min="0.5" max="1" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Περίοδος αναφοράς (h)</label>
+            <input type="number" id="t2-period" value="24" min="1" max="24" step="1" />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Τρόπος εγκατάστασης
+              <span class="info-tip" data-tip="B2: σε σωλήνα/οχετό. C: εν αέρι ή επί επιφάνειας. E/F: ελεύθερος αέρας">?</span>
+            </label>
+            <select id="t2-install">
+              <option value="B2" selected>B2 — Σωλήνας εντός τοίχου</option>
+              <option value="C">C — Επί επιφάνειας</option>
+              <option value="E">E — Ελεύθερος αέρας</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Μόνωση</label>
+            <select id="t2-insul">
+              <option value="PVC" selected>PVC (70°C)</option>
+              <option value="XLPE">XLPE (90°C)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">🔌 Καταναλωτές</div>
+
+        <p class="section-title">Γρήγορη προσθήκη</p>
+        <div class="presets" id="t2-presets"></div>
+
+        <div class="devices-header">
+          <span style="color:var(--muted);font-size:12px" id="t2-device-count">0 συσκευές</span>
+          <button class="btn btn-outline btn-sm" onclick="addDeviceRow('t2')">+ Προσθήκη συσκευής</button>
+        </div>
+
+        <div style="overflow-x:auto">
+          <table class="devices-table">
+            <thead>
+              <tr>
+                <th>Συσκευή</th>
+                <th>Ισχύς (W)</th>
+                <th>Ώρες/ημέρα</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="t2-devices-body"></tbody>
+          </table>
+        </div>
+
+        <div class="calc-btn-row">
+          <button class="btn btn-primary" onclick="calculate2()">🔍 Εύρεση Γραμμής</button>
+          <button class="btn btn-outline btn-sm" onclick="clearDevices('t2')">Καθαρισμός</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Results -->
+    <div>
+      <div id="t2-results" class="hidden">
+        <div class="card">
+          <div class="results-title">📊 Αποτελέσματα &amp; Σύσταση</div>
+
+          <div class="kpi-grid">
+            <div class="kpi blue">
+              <div class="kpi-label">Συντελεστής Ταυτοχρ.</div>
+              <div class="kpi-value" id="t2-ks">—</div>
+              <div class="kpi-unit">ks</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Συνολική ισχύς</div>
+              <div class="kpi-value" id="t2-ptotal">—</div>
+              <div class="kpi-unit">W</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Ταυτόχρονη ισχύς</div>
+              <div class="kpi-value" id="t2-psim">—</div>
+              <div class="kpi-unit">W</div>
+            </div>
+            <div class="kpi" id="t2-kpi-I">
+              <div class="kpi-label">Απαιτούμενο ρεύμα</div>
+              <div class="kpi-value" id="t2-Icalc">—</div>
+              <div class="kpi-unit">A</div>
+            </div>
+          </div>
+
+          <div class="recommendation">
+            <div class="rec-title">🏆 ΣΥΣΤΑΣΗ ΓΡΑΜΜΗΣ</div>
+            <div class="rec-grid">
+              <div class="rec-item">
+                <div class="ri-label">Διατομή καλωδίου</div>
+                <div class="ri-value" id="t2-rec-cable">—</div>
+                <div class="ri-sub">mm²</div>
+              </div>
+              <div class="rec-item">
+                <div class="ri-label">Τύπος γραμμής</div>
+                <div class="ri-value" id="t2-rec-type">—</div>
+                <div class="ri-sub">αγωγοί</div>
+              </div>
+              <div class="rec-item">
+                <div class="ri-label">Ικανότητα καλωδίου</div>
+                <div class="ri-value" id="t2-rec-Iz">—</div>
+                <div class="ri-sub">A</div>
+              </div>
+              <div class="rec-item">
+                <div class="ri-label">Ασφάλεια</div>
+                <div class="ri-value" id="t2-rec-fuse">—</div>
+                <div class="ri-sub">A</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Also show all viable options -->
+          <div id="t2-options" style="margin-top:14px"></div>
+
+          <!-- Breakdown -->
+          <div class="breakdown" id="t2-breakdown" style="margin-top:14px"></div>
+        </div>
+      </div>
+      <div id="t2-placeholder" style="display:flex;align-items:center;justify-content:center;height:300px;color:var(--muted);font-size:13px;text-align:center;">
+        <div>
+          <div style="font-size:40px;margin-bottom:12px">🔍</div>
+          <div>Εισάγετε τους καταναλωτές<br>και πατήστε <strong>Εύρεση Γραμμής</strong><br>για να δείτε τη σύσταση.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  Βασισμένο στο ΕΛΟΤ HD 384 / IEC 60364 &nbsp;|&nbsp; Τιμές αμπεροφόρτισης σύμφωνα με πίνακα 52-C1
+</footer>
+
+<script>
+// ============================================================
+//  DATA
+// ============================================================
+
+// Cable ampacity tables (A) by installation method & insulation
+// Rows: 1.5, 2.5, 4, 6, 10, 16, 25, 35 mm²
+const CABLE_DATA = {
+  sizes: [1.5, 2.5, 4, 6, 10, 16, 25, 35],
+  ampacity: {
+    // method -> insulation -> [ampacities per size]
+    B2: {
+      PVC:  [13.5, 18,   24,   31,   42,   56,   73,   89],
+      XLPE: [17.5, 23,   31,   40,   54,   73,   95,  116],
+    },
+    C: {
+      PVC:  [15.5, 21,   28,   36,   50,   68,   89,  110],
+      XLPE: [19.5, 27,   36,   46,   63,   85,  112,  138],
+    },
+    E: {
+      PVC:  [17,   23,   31,   40,   54,   73,   95,  117],
+      XLPE: [22,   30,   40,   52,   70,   94,  119,  148],
+    },
+  },
+};
+
+const FUSE_RATINGS = [6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100];
+
+const PRESET_DEVICES = [
+  { name: 'Ψυγείο',        w: 150,   h: 24 },
+  { name: 'Κλιματιστικό',  w: 2000,  h: 8  },
+  { name: 'Πλυντήριο',     w: 2200,  h: 2  },
+  { name: 'Πιατολόγος',    w: 2000,  h: 2  },
+  { name: 'Φούρνος μικρ.', w: 900,   h: 1  },
+  { name: 'Φούρνος κουζ.', w: 2000,  h: 2  },
+  { name: 'Εστία επαγ.',   w: 7200,  h: 2  },
+  { name: 'Σκούπα',        w: 1800,  h: 0.5},
+  { name: 'Στεγνωτήριο',   w: 2500,  h: 2  },
+  { name: 'Τηλεόραση',     w: 120,   h: 6  },
+  { name: 'Υπολογιστής',   w: 350,   h: 8  },
+  { name: 'Φωτισμός LED',  w: 60,    h: 6  },
+  { name: 'Boiler',        w: 2000,  h: 3  },
+  { name: 'Αντλία νερού',  w: 750,   h: 4  },
+  { name: 'Θερμοπομπός',   w: 1500,  h: 8  },
+];
+
+// ============================================================
+//  STATE
+// ============================================================
+let t1Rows = [];
+let t2Rows = [];
+let rowCounter = 0;
+
+// ============================================================
+//  INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  buildPresets('t1');
+  buildPresets('t2');
+  // Add a couple of default rows to get started
+  addDeviceRow('t1', 'Σκούπα', 2000, 0.5);
+  addDeviceRow('t1', 'Υπολογιστής', 150, 8);
+  addDeviceRow('t1', 'Τηλεόραση', 120, 6);
+  addDeviceRow('t2', 'Κλιματιστικό', 2000, 8);
+  addDeviceRow('t2', 'Φωτισμός LED', 60, 6);
+  addDeviceRow('t2', 'Boiler', 2000, 3);
+});
+
+// ============================================================
+//  TABS
+// ============================================================
+function switchTab(n) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === n - 1));
+  document.querySelectorAll('.tab-panel').forEach((p, i) => p.classList.toggle('active', i === n - 1));
+}
+
+// ============================================================
+//  PRESETS
+// ============================================================
+function buildPresets(prefix) {
+  const wrap = document.getElementById(prefix + '-presets');
+  PRESET_DEVICES.forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn';
+    btn.textContent = d.name;
+    btn.onclick = () => addDeviceRow(prefix, d.name, d.w, d.h);
+    wrap.appendChild(btn);
+  });
+}
+
+// ============================================================
+//  DEVICE ROWS
+// ============================================================
+function addDeviceRow(prefix, name = '', power = '', hours = '') {
+  const id = ++rowCounter;
+  const arr = prefix === 't1' ? t1Rows : t2Rows;
+  arr.push(id);
+
+  const tbody = document.getElementById(prefix + '-devices-body');
+  const tr = document.createElement('tr');
+  tr.id = prefix + '-row-' + id;
+  tr.innerHTML = `
+    <td><input class="device-name-input" type="text" value="${name}" placeholder="π.χ. Σκούπα" /></td>
+    <td><input class="power-input" type="number" value="${power}" min="1" max="100000" placeholder="W" /></td>
+    <td><input class="hours-input" type="number" value="${hours}" min="0" step="0.5" placeholder="ώρες" /></td>
+    <td><button class="btn btn-danger btn-sm" onclick="removeRow('${prefix}', ${id})">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  updateCount(prefix);
+}
+
+function removeRow(prefix, id) {
+  const arr = prefix === 't1' ? t1Rows : t2Rows;
+  const idx = arr.indexOf(id);
+  if (idx !== -1) arr.splice(idx, 1);
+  const el = document.getElementById(prefix + '-row-' + id);
+  if (el) el.remove();
+  updateCount(prefix);
+}
+
+function clearDevices(prefix) {
+  const arr = prefix === 't1' ? t1Rows : t2Rows;
+  [...arr].forEach(id => removeRow(prefix, id));
+  hideResults(prefix);
+}
+
+function updateCount(prefix) {
+  const arr = prefix === 't1' ? t1Rows : t2Rows;
+  document.getElementById(prefix + '-device-count').textContent = arr.length + ' συσκευές';
+}
+
+// ============================================================
+//  READ ROWS
+// ============================================================
+function readDevices(prefix) {
+  const arr = prefix === 't1' ? t1Rows : t2Rows;
+  const period = parseFloat(document.getElementById(prefix + '-period').value) || 24;
+  const devices = [];
+  arr.forEach(id => {
+    const tr = document.getElementById(prefix + '-row-' + id);
+    if (!tr) return;
+    const inputs = tr.querySelectorAll('input');
+    const name  = inputs[0].value.trim() || 'Συσκευή';
+    const power = parseFloat(inputs[1].value);
+    const hours = parseFloat(inputs[2].value);
+    if (isNaN(power) || power <= 0) return;
+    const safeHours = Math.min(isNaN(hours) ? 0 : hours, period);
+    const ki = safeHours / period;   // utilization factor
+    devices.push({ name, power, hours: safeHours, ki });
+  });
+  return devices;
+}
+
+// ============================================================
+//  CORE CALCULATIONS
+// ============================================================
+function calcKs(devices) {
+  const Ptotal = devices.reduce((s, d) => s + d.power, 0);
+  const Psim   = devices.reduce((s, d) => s + d.power * d.ki, 0);
+  const ks = Ptotal > 0 ? Psim / Ptotal : 0;
+  return { Ptotal, Psim, ks };
+}
+
+function calcCurrent(P, voltage, cosphi) {
+  if (voltage === 400) {
+    return P / (Math.sqrt(3) * voltage * cosphi);
+  }
+  return P / (voltage * cosphi);
+}
+
+function getCableAmpacity(sizeIdx, method, insul) {
+  return CABLE_DATA.ampacity[method][insul][sizeIdx];
+}
+
+function recommendFuse(Iz) {
+  // Largest fuse that satisfies: In ≤ Iz  (IEC: In ≤ Iz)
+  let best = null;
+  for (const f of FUSE_RATINGS) {
+    if (f <= Iz) best = f;
+    else break;
+  }
+  return best;
+}
+
+function nextFuseAbove(I) {
+  // Smallest standard fuse ≥ I
+  for (const f of FUSE_RATINGS) {
+    if (f >= I) return f;
+  }
+  return null;
+}
+
+// ============================================================
+//  CALCULATE — METHOD 1
+// ============================================================
+function calculate1() {
+  const devices = readDevices('t1');
+  if (devices.length === 0) { alert('Προσθέστε τουλάχιστον μία συσκευή!'); return; }
+
+  const voltage = parseFloat(document.getElementById('t1-voltage').value);
+  const cosphi  = parseFloat(document.getElementById('t1-cosphi').value) || 0.9;
+  const cable   = parseFloat(document.getElementById('t1-cable').value);
+  const fuseRating = parseFloat(document.getElementById('t1-fuse').value);
+  const method  = 'B2';
+  const insul   = 'PVC';
+
+  const { Ptotal, Psim, ks } = calcKs(devices);
+  const Icalc = calcCurrent(Psim, voltage, cosphi);
+
+  const sizeIdx = CABLE_DATA.sizes.indexOf(cable);
+  const Iz = sizeIdx >= 0 ? getCableAmpacity(sizeIdx, method, insul) : null;
+
+  // Status checks
+  const checks = [];
+  let overallOk = true;
+
+  // Check 1: I ≤ fuse
+  const fuseOk = Icalc <= fuseRating;
+  if (!fuseOk) overallOk = false;
+  checks.push({
+    ok: fuseOk,
+    label: `Ρεύμα λειτουργίας (${fmt(Icalc)} A) ${fuseOk ? '≤' : '>'} Ασφάλεια (${fuseRating} A)`,
+    hint: fuseOk ? '' : `Απαιτείται ασφάλεια τουλάχιστον ${nextFuseAbove(Icalc)} A`,
+  });
+
+  // Check 2: fuse ≤ Iz
+  if (Iz !== null) {
+    const cableOk = fuseRating <= Iz;
+    if (!cableOk) overallOk = false;
+    checks.push({
+      ok: cableOk,
+      label: `Ασφάλεια (${fuseRating} A) ${cableOk ? '≤' : '>'} Χωρητικότητα καλωδίου (${Iz} A)`,
+      hint: cableOk ? '' : `Το καλώδιο ${cable} mm² δεν αντέχει την ασφάλεια ${fuseRating} A`,
+    });
+  }
+
+  // Check 3: loading %
+  const loadPct = Iz ? (Icalc / Iz) * 100 : null;
+  if (loadPct !== null) {
+    const loadOk = loadPct <= 100;
+    checks.push({
+      ok: loadOk,
+      label: `Φόρτιση καλωδίου: ${fmt(loadPct)}%`,
+      hint: loadOk ? (loadPct > 80 ? 'Προσοχή: φόρτιση > 80%' : '') : 'Υπερφόρτωση καλωδίου!',
+    });
+  }
+
+  // Render
+  document.getElementById('t1-ks').textContent     = fmt(ks, 3);
+  document.getElementById('t1-ptotal').textContent = fmtW(Ptotal);
+  document.getElementById('t1-psim').textContent   = fmtW(Psim);
+  document.getElementById('t1-Icalc').textContent  = fmt(Icalc);
+  document.getElementById('t1-Ifuse').textContent  = fuseRating;
+  document.getElementById('t1-Icable').textContent = Iz ?? '—';
+
+  colorKpi('t1-kpi-I',     Icalc <= fuseRating ? 'green' : 'red');
+  colorKpi('t1-kpi-fuse',  fuseRating <= (Iz ?? 9999) ? 'green' : 'red');
+  colorKpi('t1-kpi-cable', Iz && Icalc <= Iz ? 'green' : 'red');
+
+  const statusEl = document.getElementById('t1-status');
+  if (overallOk) {
+    statusEl.className = 'status-bar ok';
+    statusEl.innerHTML = '✅ Η γραμμή είναι επαρκής για τα συγκεκριμένα φορτία.';
+  } else {
+    statusEl.className = 'status-bar danger';
+    statusEl.innerHTML = '❌ Η γραμμή ΔΕΝ είναι επαρκής! Δείτε τις επισημάνσεις παρακάτω.';
+  }
+
+  // Checks HTML
+  const checksHtml = checks.map(c => `
+    <div class="status-bar ${c.ok ? 'ok' : 'danger'}" style="margin-bottom:6px;font-size:12px">
+      ${c.ok ? '✅' : '❌'} ${c.label}
+      ${c.hint ? `<br><span style="font-size:11px;opacity:.8">${c.hint}</span>` : ''}
+    </div>
+  `).join('');
+  document.getElementById('t1-checks').innerHTML = checksHtml;
+
+  // Breakdown
+  renderBreakdown('t1-breakdown', devices, Ptotal);
+
+  showResults('t1');
+}
+
+// ============================================================
+//  CALCULATE — METHOD 2
+// ============================================================
+function calculate2() {
+  const devices = readDevices('t2');
+  if (devices.length === 0) { alert('Προσθέστε τουλάχιστον μία συσκευή!'); return; }
+
+  const voltage = parseFloat(document.getElementById('t2-voltage').value);
+  const cosphi  = parseFloat(document.getElementById('t2-cosphi').value) || 0.9;
+  const method  = document.getElementById('t2-install').value;
+  const insul   = document.getElementById('t2-insul').value;
+
+  const { Ptotal, Psim, ks } = calcKs(devices);
+  const Icalc = calcCurrent(Psim, voltage, cosphi);
+
+  // Find suitable cable
+  let recIdx = null;
+  for (let i = 0; i < CABLE_DATA.sizes.length; i++) {
+    const Iz = getCableAmpacity(i, method, insul);
+    const fuse = recommendFuse(Iz);
+    if (fuse !== null && fuse >= Icalc) {
+      recIdx = i;
+      break;
+    }
+  }
+
+  // Render KPIs
+  document.getElementById('t2-ks').textContent     = fmt(ks, 3);
+  document.getElementById('t2-ptotal').textContent = fmtW(Ptotal);
+  document.getElementById('t2-psim').textContent   = fmtW(Psim);
+  document.getElementById('t2-Icalc').textContent  = fmt(Icalc);
+  colorKpi('t2-kpi-I', recIdx !== null ? 'blue' : 'red');
+
+  if (recIdx !== null) {
+    const recSize = CABLE_DATA.sizes[recIdx];
+    const recIz   = getCableAmpacity(recIdx, method, insul);
+    const recFuse = recommendFuse(recIz);
+    const conductors = voltage === 400 ? '4' : '3';
+
+    document.getElementById('t2-rec-cable').textContent = recSize;
+    document.getElementById('t2-rec-type').textContent  = conductors + ' × ' + recSize;
+    document.getElementById('t2-rec-Iz').textContent    = recIz;
+    document.getElementById('t2-rec-fuse').textContent  = recFuse;
+  } else {
+    ['t2-rec-cable','t2-rec-type','t2-rec-Iz','t2-rec-fuse'].forEach(id => {
+      document.getElementById(id).textContent = 'N/A';
+    });
+  }
+
+  // All options table
+  const conductors = voltage === 400 ? '4' : '3';
+  let optHtml = `
+    <div class="section-title" style="margin-bottom:8px">Όλες οι επιλογές καλωδίου</div>
+    <div class="breakdown">
+    <table>
+      <thead>
+        <tr>
+          <th>Διατομή</th>
+          <th>Iz (A)</th>
+          <th>Max ασφάλεια</th>
+          <th>Καταλληλότητα</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+  CABLE_DATA.sizes.forEach((sz, i) => {
+    const Iz = getCableAmpacity(i, method, insul);
+    const fuse = recommendFuse(Iz);
+    const ok = fuse !== null && fuse >= Icalc;
+    const isRec = i === recIdx;
+    optHtml += `
+      <tr style="${isRec ? 'background:rgba(79,142,247,.08)' : ''}">
+        <td style="font-weight:${isRec?'700':'400'};color:${isRec?'var(--accent)':'inherit'}">
+          ${isRec ? '⭐ ' : ''}${conductors} × ${sz} mm²
+        </td>
+        <td>${Iz} A</td>
+        <td>${fuse ?? '—'} A</td>
+        <td style="color:${ok?'var(--green)':'var(--muted)'}">
+          ${ok ? '✅ Κατάλληλο' : '✗'}
+        </td>
+      </tr>
+    `;
+  });
+  optHtml += '</tbody></table></div>';
+  document.getElementById('t2-options').innerHTML = optHtml;
+
+  renderBreakdown('t2-breakdown', devices, Ptotal);
+  showResults('t2');
+}
+
+// ============================================================
+//  UI HELPERS
+// ============================================================
+function showResults(prefix) {
+  document.getElementById(prefix + '-results').classList.remove('hidden');
+  document.getElementById(prefix + '-placeholder').style.display = 'none';
+}
+
+function hideResults(prefix) {
+  document.getElementById(prefix + '-results').classList.add('hidden');
+  document.getElementById(prefix + '-placeholder').style.display = 'flex';
+}
+
+function colorKpi(id, cls) {
+  const el = document.getElementById(id);
+  el.className = 'kpi ' + cls;
+}
+
+function renderBreakdown(targetId, devices, Ptotal) {
+  const el = document.getElementById(targetId);
+  const maxP = Math.max(...devices.map(d => d.power));
+  let html = `
+    <table>
+      <thead>
+        <tr>
+          <th>Συσκευή</th>
+          <th>Ισχύς (W)</th>
+          <th>Ώρες</th>
+          <th>Χρήση (ki)</th>
+          <th>Ταυτόχρ. ισχύς (W)</th>
+          <th>% Συνόλου</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+  devices.forEach(d => {
+    const Psim = d.power * d.ki;
+    const pct  = Ptotal > 0 ? (d.power / Ptotal * 100) : 0;
+    const barW = maxP > 0 ? (d.power / maxP * 100) : 0;
+    html += `
+      <tr>
+        <td>${escHtml(d.name)}</td>
+        <td>
+          <div class="bar-cell">
+            ${d.power.toLocaleString('el-GR')}
+            <div class="mini-bar"><div class="mini-bar-fill" style="width:${barW}%"></div></div>
+          </div>
+        </td>
+        <td>${d.hours}</td>
+        <td>${fmt(d.ki, 2)}</td>
+        <td>${fmt(Psim, 0)}</td>
+        <td>${fmt(pct, 1)}%</td>
+      </tr>
+    `;
+  });
+  const Psimtotal = devices.reduce((s, d) => s + d.power * d.ki, 0);
+  const ks = Ptotal > 0 ? Psimtotal / Ptotal : 0;
+  html += `
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--surface2);font-weight:700">
+          <td>ΣΥΝΟΛΟ</td>
+          <td>${Ptotal.toLocaleString('el-GR')} W</td>
+          <td>—</td>
+          <td style="color:var(--accent)">ks = ${fmt(ks, 3)}</td>
+          <td style="color:var(--accent)">${fmt(Psimtotal, 0)} W</td>
+          <td>100%</td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
+  el.innerHTML = html;
+}
+
+function fmt(v, dec = 2) {
+  if (isNaN(v)) return '—';
+  return v.toFixed(dec);
+}
+
+function fmtW(v) {
+  if (v >= 1000) return fmt(v / 1000, 2) + ' kW';
+  return Math.round(v) + ' W';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
