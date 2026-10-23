@@ -1,3 +1,6 @@
-control
-matplotlib
+streamlit
+control>=0.10
 numpy
+scipy
+matplotlib
+pandas
